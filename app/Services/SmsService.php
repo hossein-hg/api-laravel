@@ -9,8 +9,9 @@ class SmsService
 {
     protected $username = 'maxgroup';
     protected $password = 'fgh456qaz4540';
-    // protected $senderNumber = '+985000107070000';
-    protected $senderNumber = '+98100020400';
+    protected $senderNumber = '+985000107070000';
+    // protected $senderNumber = '+98100020400';
+    // protected $senderNumber = '+9810004150535353';
     protected $client;
     protected $mobiles;
     protected $message;
@@ -28,17 +29,17 @@ class SmsService
     public function send($message, $mobiles)
     {
 
-        $client = new SoapClient("http://188.0.240.110/class/sms/wsdlservice/server.php?wsdl");
-        $user = "maxgroup";
-        $pass = "fgh456qaz4540";
-        $fromNum = "+98100020400";
-        $toNum = array($mobiles);
-        $pattern_code = "cs9nvg3ltp";
-        $input_data = array(
-            "name" => 'test',
-            "password" => $message,
-        );
-        return $client->sendPatternSms($fromNum, $toNum, $user, $pass, $pattern_code, $input_data);
+        // $client = new SoapClient("http://188.0.240.110/class/sms/wsdlservice/server.php?wsdl");
+        // $user = "maxgroup";
+        // $pass = "fgh456qaz4540";
+        // $fromNum = "+98100020400";
+        // $toNum = array($mobiles);
+        // $pattern_code = "cs9nvg3ltp";
+        // $input_data = array(
+        //     "name" => 'test',
+        //     "password" => $message,
+        // );
+        // return $client->sendPatternSms($fromNum, $toNum, $user, $pass, $pattern_code, $input_data);
 
 
 
@@ -58,69 +59,70 @@ class SmsService
 
 
 
-    //     $mobiles = is_array($mobiles) ? $mobiles : [$mobiles];
-    //     // اصلاح شماره‌ها (هر کدوم رو جداگانه correct کن)
-    //     $correctedMobiles = [];
-    //     foreach ($mobiles as $singleMobile) {
-    //         $corrected = $this->correctNumber($singleMobile);
-    //         if (!empty($corrected)) {
-    //             $correctedMobiles[] = $corrected;
-    //         }
-    //     }
-    //     // $mobiles = [+989375434086];
+        $mobiles = is_array($mobiles) ? $mobiles : [$mobiles];
+        // اصلاح شماره‌ها (هر کدوم رو جداگانه correct کن)
+        $correctedMobiles = [];
+        foreach ($mobiles as $singleMobile) {
+            $corrected = $this->correctNumber($singleMobile);
+            if (!empty($corrected)) {
+                $correctedMobiles[] = $corrected;
+            }
+        }
+        // $mobiles = [+989375434086];
 
-    //     if (is_array($mobiles)) {
-    //         $i = sizeOf($mobiles);
+        if (is_array($mobiles)) {
+            $i = sizeOf($mobiles);
 
-    //         while ($i--) {
-    //             $mobiles[$i] = self::CorrectNumber($mobiles[$i]);
-    //         }
-    //     } else {
-    //         $mobiles = array(self::CorrectNumber($mobiles));
-    //     }
-    //     $this->mobiles = $mobiles;
-    //     $this->message = $message;
+            while ($i--) {
+                $mobiles[$i] = self::CorrectNumber($mobiles[$i]);
+            }
+        } else {
+            $mobiles = array(self::CorrectNumber($mobiles));
+        }
+        $this->mobiles = $mobiles;
+        $this->message = $message;
         
-    //     $params = [
-    //         $this->username,
-    //         $this->password,
-    //         $mobiles,
-    //         $this->senderNumber,   
-    //         $message,
-    //         'normal',
-    //     ];
+        $params = [
+            $this->username,
+            $this->password,
+           
+            $this->senderNumber,   
+            $message,
+            $mobiles,
+            'normal',
+        ];
        
-    //     $response = $this->call('SendSMS', $params);
-    //     var_dump($response);
-    // }
+        $response = $this->call('SendSMS', $params);
+        var_dump($response);
+    }
 
-    // private function call($method, $params)
-    // {
-    //     // $result = call_user_func_array([$this->client, 'SendSMS'], "Amir");
+    private function call($method, $params)
+    {
+        // $result = call_user_func_array([$this->client, 'SendSMS'], "Amir");
 
 
-    //     // die(var_dump($this->mob));
-    //     try {
-    //         return call_user_func_array([$this->client, $method], [
-    //             $this->username,
-    //             $this->password,
-    //             $this->senderNumber,
-    //             $this->mobiles,
-    //             $this->message,
-    //             "normal",
-    //         ]);
-    //     } catch (SoapFault $e) {
-    //         throw new Exception($e->getMessage(), (int) $e->getCode(), $e);
-    //     }
+        // die(var_dump($this->mob));
+        try {
+            return call_user_func_array([$this->client, $method], [
+                $this->username,
+                $this->password,
+                $this->senderNumber,
+                $this->mobiles,
+                $this->message,
+                "normal",
+            ]);
+        } catch (SoapFault $e) {
+            throw new Exception($e->getMessage(), (int) $e->getCode(), $e);
+        }
 
-        // $result = $this->client->__call($method, $params);
+        $result = $this->client->__call($method, $params);
 
-        // if($this->client->fault || ((bool)$this->client->getError()))
-        // {
-        // 	return array('error' => true, 'fault' => true, 'message' => $this->client->getError());
-        // }
+        if($this->client->fault || ((bool)$this->client->getError()))
+        {
+        	return array('error' => true, 'fault' => true, 'message' => $this->client->getError());
+        }
 
-        // return $result;
+        return $result;
     }
 
     public static function CorrectNumber(&$uNumber)
