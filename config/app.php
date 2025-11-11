@@ -64,7 +64,7 @@ return [
     | is set to "UTC" by default as it is suitable for most use cases.
     |
     */
-
+    
     'timezone' => 'UTC',
 
     /*
@@ -78,7 +78,7 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    'locale' => env('APP_LOCALE', 'fa'),
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 

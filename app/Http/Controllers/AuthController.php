@@ -23,12 +23,17 @@ class AuthController extends Controller
                 'code' => $code,
                 'name' => $request->name,
                 'gender' => $request->gender,
-                'expires_at' => Carbon::now()->addMinutes(10),
+                'expires_at' => Carbon::now()->addMinutes(3),
             ]
         );
         $sms = new SmsService();
         $sms->sendWithPattern($code, $request->phone);
-        return response()->json(['message' => 'OTP sent successfully']);
+        return response()->json([
+            'data' => null,
+            'statusCode' => 200,
+            'success' => true,
+            'message' => 'رمز ورود به شماره شما ارسال شد'
+        ]);
     }
 
     public function login(LoginRequest $request)
@@ -37,21 +42,37 @@ class AuthController extends Controller
         $user = User::where('phone', $request->phone)->first();
 
         if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
+            return response()->json([
+                 'data' => null,
+                'statusCode'=> 404,
+                'success'=>false,
+                'message' => 'Validation failed!',
+                 "errors"=> [
+                    "phone" => [
+                        "کاربری با این شماره تلفن یافت نشد."
+                    ]
+                 ],
+            ], 404);
         }
 
         $code = rand(100000, 999999);
-
+        $sms = new SmsService();
+        $sms->sendWithPattern($code, $request->phone);
         Otp::updateOrCreate(
             ['phone' => $request->phone],
             [
                 'code' => $code,
                 'name' => $user->name,
                 'gender' => $user->gender,
-                'expires_at' => Carbon::now()->addMinutes(10),
+                'expires_at' => Carbon::now()->addMinutes(3),
             ]
         );
-        return response()->json(['message' => 'OTP sent successfully']);
+        return response()->json([
+            'data' => null,
+            'statusCode'=> 200,
+            'success'=>true,
+            'message' => 'رمز ورود به شماره شما ارسال شد'
+        ]);
      
     }
 
@@ -79,31 +100,53 @@ class AuthController extends Controller
         // }
         if (!$otp) {
             // OTP پیدا نشد، نمی‌توان attempts افزایش داد
-            return response()->json(['error' => 'Invalid OTP, please request a new one'], 401);
+            return response()->json([
+                'data' => null,
+                'statusCode' => 401,
+                'message' => 'شماره یافت نشد !',
+                'success' => true,
+            ], 401);
         }
         if ($otp->isExpired()) {
             $otp->delete(); // حذف OTP منقضی
-            return response()->json(['error' => 'OTP expired, please request a new one'], 401);
+            return response()->json([
+                'data' => null,
+                'statusCode' => 503,
+                'message' => 'لطفا دوباره شماره را وارد کنید',
+                'success' => true,
+                'error' => 'OTP expired, please request a new one'
+            ], 503);
         }
-
+        
         if ($otp->maxAttemptsReached()) {
             $otp->delete();
-            return response()->json(['error' => 'Maximum attempts reached, please request a new OTP'], 429);
+            return response()->json([
+                'data' => null,
+                'statusCode' => 429,
+                'message' =>  'لطفا دوباره شماره را وارد کنید',
+                'success' => true,
+                
+            ], 429);
         }
-
+        
         if ($otp->code !== $request->code) {
             $otp->incrementAttempts();
-            $remaining = 6 - $otp->attempts;
-            return response()->json(['error' => "Invalid OTP, $remaining attempts remaining"], 401);
+            // $remaining = 4 - $otp->attempts;
+            return response()->json([
+                'data' => null,
+                'statusCode' => 401,
+                'message' => 'رمز اشتباه است!',
+                'success' => false,
+            ], 401);
         }
-
         
 
-        
 
-        
 
-      
+
+
+
+
 
         // ایجاد کاربر با اطلاعات موجود در OTP
         $user = User::create([
@@ -113,13 +156,21 @@ class AuthController extends Controller
             // 'password' => bcrypt(Str::random(8)) // رمز عبور تصادفی
         ]);
 
-        $otp->delete(); // حذف OTP پس از استفاده
+        // $otp->delete(); // حذف OTP پس از استفاده
 
         $token = JWTAuth::fromUser($user);
 
+        
+
         return response()->json([
-            'user' => $user,
-            'token' => $token
+            'data'=>[
+                'user' => $user,
+                'token' => $token
+            ],
+            'statusCode'=> 200,
+            'message'=> 'موفقیت آمیز',
+            'success'=>true,
+
         ]);
     }
 }
