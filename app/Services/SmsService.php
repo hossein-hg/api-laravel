@@ -4,63 +4,31 @@ namespace App\Services;
 
 use SoapClient;
 use Exception;
+use Illuminate\Support\Facades\Log;  // اگر Laravel
 
 class SmsService
 {
-    protected $username = 'maxgroup';
-    protected $password = 'fgh456qaz4540';
-    protected $senderNumber = '+985000107070000';
-    // protected $senderNumber = '+98100020400';
-    // protected $senderNumber = '+9810004150535353';
-    protected $client;
+    protected $username = 'afradade003';
+    protected $password = 'hosseiny003';
+    protected $senderNumber = '+983000505';
     protected $mobiles;
     protected $message;
+    protected $client;
 
     public function __construct()
     {
-        $this->client = new SoapClient("http://188.0.240.110/class/sms/wssimple/server.php?wsdl");
+        // $this->client = new SoapClient("https://ippanel.com/class/sms/wssimple/server.php?wsdl");
+        $this->client = new SoapClient("https://ippanel.com/class/sms/wsdlservice/server.php?wsdl");
+        // $this->client = new SoapClient("http://188.0.240.110/class/sms/wssimple/server.php?wsdl");
         $this->client->soap_defencoding = 'UTF-8';
         $this->client->decode_utf8 = true;
-        error_log('متدهای موجود: ' . print_r($this->client->__getFunctions(), true));
-       
-        
     }
 
     public function send($message, $mobiles)
     {
-
-        // $client = new SoapClient("http://188.0.240.110/class/sms/wsdlservice/server.php?wsdl");
-        // $user = "maxgroup";
-        // $pass = "fgh456qaz4540";
-        // $fromNum = "+98100020400";
-        // $toNum = array($mobiles);
-        // $pattern_code = "cs9nvg3ltp";
-        // $input_data = array(
-        //     "name" => 'test',
-        //     "password" => $message,
-        // );
-        // return $client->sendPatternSms($fromNum, $toNum, $user, $pass, $pattern_code, $input_data);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        $this->mobiles = is_array($mobiles) ? $mobiles : [$mobiles];
         $mobiles = is_array($mobiles) ? $mobiles : [$mobiles];
-        // اصلاح شماره‌ها (هر کدوم رو جداگانه correct کن)
+
         $correctedMobiles = [];
         foreach ($mobiles as $singleMobile) {
             $corrected = $this->correctNumber($singleMobile);
@@ -68,147 +36,106 @@ class SmsService
                 $correctedMobiles[] = $corrected;
             }
         }
-        // $mobiles = [+989375434086];
+        $mobiles = $correctedMobiles;
 
-        if (is_array($mobiles)) {
-            $i = sizeOf($mobiles);
-
-            while ($i--) {
-                $mobiles[$i] = self::CorrectNumber($mobiles[$i]);
-            }
-        } else {
-            $mobiles = array(self::CorrectNumber($mobiles));
-        }
         $this->mobiles = $mobiles;
-        $this->message = $message;
-        
+        $this->message = 'کد ورود به سایت : '.$message;
+
         $params = [
             $this->username,
             $this->password,
-           
-            $this->senderNumber,   
-            $message,
-            $mobiles,
+            $this->senderNumber,
+            $this->mobiles,
+            $this->message,
             'normal',
         ];
-       
+        
+        Log::info('SMS Params: ' . json_encode($params));
+
         $response = $this->call('SendSMS', $params);
         var_dump($response);
+
+        return $response;
     }
 
     private function call($method, $params)
     {
-        // $result = call_user_func_array([$this->client, 'SendSMS'], "Amir");
-
-
-        // die(var_dump($this->mob));
         try {
-            return call_user_func_array([$this->client, $method], [
-                $this->username,
-                $this->password,
-                $this->senderNumber,
-                $this->mobiles,
-                $this->message,
-                "normal",
-            ]);
-        } catch (SoapFault $e) {
-            throw new Exception($e->getMessage(), (int) $e->getCode(), $e);
+            return call_user_func_array([$this->client, $method], $params);
+        } catch (Exception $e) {
+            Log::error('SOAP Error: ' . $e->getMessage());
+            throw new Exception('خطا در ' . $method . ': ' . $e->getMessage(), (int) $e->getCode(), $e);
         }
-
-        $result = $this->client->__call($method, $params);
-
-        if($this->client->fault || ((bool)$this->client->getError()))
-        {
-        	return array('error' => true, 'fault' => true, 'message' => $this->client->getError());
-        }
-
-        return $result;
     }
 
-    public static function CorrectNumber(&$uNumber)
+    public static function correctNumber($uNumber)  // renamed to non-static for consistency
     {
-        $uNumber = Trim($uNumber);
-        $ret = &$uNumber;
-        // die(var_dump($ret));
+        $uNumber = trim($uNumber);
+        $ret = $uNumber;
 
-        if (substr($uNumber, 0, 3) == '%2B') {
+        // حذف %2B یا + از ابتدا
+        if (substr($uNumber, 0, 3) == '%2B' || substr($uNumber, 0, 3) == '%2b') {
             $ret = substr($uNumber, 3);
-            $uNumber = $ret;
-        }
-
-        if (substr($uNumber, 0, 3) == '%2b') {
-            $ret = substr($uNumber, 3);
-            $uNumber = $ret;
-        }
-
-        if (substr($uNumber, 0, 4) == '0098') {
+        } elseif (substr($uNumber, 0, 4) == '0098') {
             $ret = substr($uNumber, 4);
-            $uNumber = $ret;
-        }
-
-        if (substr($uNumber, 0, 3) == '098') {
+        } elseif (substr($uNumber, 0, 3) == '098' || substr($uNumber, 0, 3) == '+98') {
             $ret = substr($uNumber, 3);
-            $uNumber = $ret;
-        }
-
-
-        if (substr($uNumber, 0, 3) == '+98') {
-            $ret = substr($uNumber, 3);
-            $uNumber = $ret;
-        }
-
-        if (substr($uNumber, 0, 2) == '98') {
+        } elseif (substr($uNumber, 0, 2) == '98') {
             $ret = substr($uNumber, 2);
-            $uNumber = $ret;
-        }
-
-        if (substr($uNumber, 0, 1) == '0') {
+        } elseif (substr($uNumber, 0, 1) == '0') {
             $ret = substr($uNumber, 1);
-            $uNumber = $ret;
         }
 
-        return '+98' . $ret;
+        return '+98' . $ret;  // فرمت نهایی: +989xxxxxxxxx
     }
 
+    // getBalance و getDeliveryStatus بدون تغییر (اما params رو چک کن)
     public function getBalance()
     {
         try {
-            $params = [
-                $this->username,
-                $this->password,
-            ];
-            $response = $this->call('GetCredit', $params);  // یا 'GetUserBalance' اگر WSDL فرق داره
-            return $response;  // مثلاً 1500 (موفق) یا [1, 'خطا'] (ناموفق)
+            $params = [$this->username, $this->password];
+            $response = $this->call('GetCredit', $params);
+            Log::info('Balance: ' . json_encode($response));
+            return $response;
         } catch (Exception $e) {
-            \Log::error('Balance Check Error: ' . $e->getMessage());  // اگر لاراول
-            throw new Exception('خطا در چک موجودی: ' . $e->getMessage());
+            Log::error('Balance Error: ' . $e->getMessage());
+            throw $e;
         }
     }
 
     public function getDeliveryStatus($uniqueId)
     {
-        if (!is_array($uniqueId)) {
-            $uniqueId = [$uniqueId];  // [1265165260]
-        }
-        $batchId = 0;  // خالی برای تکی (یا '0' اگر کار نکرد)
+        if (!is_array($uniqueId))
+            $uniqueId = [$uniqueId];
+        $batchId = 0;  // برای تکی
 
         try {
             $params = [
                 $this->username,
                 $this->password,
-                $batchId,      // BatchID: خالی
-                $uniqueId,     // UniqueIDs: آرایه
+                $batchId,
+                $uniqueId,
             ];
-
-            error_log('Status Params: ' . json_encode($params));  // لاگ در PHP (یا \Log::info در لاراول)
-
+            Log::info('Status Params: ' . json_encode($params));
             $response = $this->call('GetStatus', $params);
-            return $response;  // اگر null داد، یعنی وضعیت آپدیت نشده
-        } catch (SoapFault $e) {
-            error_log('SOAP Fault Details: ' . $e->getMessage() . ' | Code: ' . $e->getCode());
-            throw new Exception('خطا GetStatus: ' . $e->getMessage(), (int) $e->getCode());
+            Log::info('Status Response: ' . json_encode($response));
+            return $response;
+        } catch (Exception $e) {
+            Log::error('Status Error: ' . $e->getMessage());
+            throw $e;
         }
     }
 
-   
+    public function sendWithPattern($message ,$mobiles)
+    {
+        $this->mobiles = is_array($mobiles) ? $mobiles : [$mobiles];
+        $pattern_code = "6vxjzm7se343a6f";
+        $input_data = array(
+            "code" => $message,
+           
+        );
+        $params = [$this->senderNumber, $mobiles, $this->username, $this->password, $pattern_code, $input_data];
+        return $this->call('sendPatternSms', $params);
+        
+    }
 }

@@ -27,9 +27,7 @@ class AuthController extends Controller
             ]
         );
         $sms = new SmsService();
-        // return $sms->getDeliveryStatus([1265165260]);
-        // return $sms->getBalance();
-        return $sms->send($code, $request->phone);
+        $sms->sendWithPattern($code, $request->phone);
         return response()->json(['message' => 'OTP sent successfully']);
     }
 
