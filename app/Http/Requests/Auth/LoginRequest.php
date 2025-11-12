@@ -34,7 +34,7 @@ class LoginRequest extends FormRequest
     {
         throw new HttpResponseException(response()->json([
             'success' => false,  // فیلد custom
-            'message' => 'Validation failed!',  // پیام custom
+            'message' => ' خطا اعتبارسنجی!',  // پیام custom
             'statusCode' => 422,  // اضافه کردن کد وضعیت
             'errors' => $validator->errors(),  // errors اصلی رو نگه دار
             'data' => null  // اگر بخوای data خالی اضافه کنی

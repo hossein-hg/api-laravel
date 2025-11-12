@@ -33,7 +33,7 @@ class RegisterRequest extends FormRequest
     {
         throw new HttpResponseException(response()->json([
             'success' => false,
-            'message' => 'Validation failed!', 
+            'message' => 'خطا اعتبارسنجی !', 
             'statusCode' => 422,  
             'errors' => $validator->errors(), 
             'data' => null 

@@ -11,6 +11,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\Auth\Otp;
 use Carbon\Carbon;
 use App\Services\SmsService;
+use Tymon\JWTAuth\Exceptions\JWTException;
 class AuthController extends Controller
 {
     public function register(RegisterRequest $request)
@@ -23,7 +24,8 @@ class AuthController extends Controller
                 'code' => $code,
                 'name' => $request->name,
                 'gender' => $request->gender,
-                'expires_at' => Carbon::now()->addMinutes(3),
+                'expires_at' => Carbon::now()->addMinutes(2),
+                'errors'=> null
             ]
         );
         $sms = new SmsService();
@@ -32,7 +34,8 @@ class AuthController extends Controller
             'data' => null,
             'statusCode' => 200,
             'success' => true,
-            'message' => 'رمز ورود به شماره شما ارسال شد'
+            'message' => 'رمز ورود به شماره شما ارسال شد',
+            'errors' => null
         ]);
     }
 
@@ -44,15 +47,15 @@ class AuthController extends Controller
         if (!$user) {
             return response()->json([
                  'data' => null,
-                'statusCode'=> 404,
+                'statusCode'=> 422,
                 'success'=>false,
-                'message' => 'Validation failed!',
+                'message' => 'خطا اعتبارسنجی',
                  "errors"=> [
                     "phone" => [
                         "کاربری با این شماره تلفن یافت نشد."
                     ]
                  ],
-            ], 404);
+            ], 422);
         }
 
         $code = rand(100000, 999999);
@@ -64,24 +67,54 @@ class AuthController extends Controller
                 'code' => $code,
                 'name' => $user->name,
                 'gender' => $user->gender,
-                'expires_at' => Carbon::now()->addMinutes(3),
+                'expires_at' => Carbon::now()->addMinutes(2),
+                'errors' => null
             ]
         );
         return response()->json([
             'data' => null,
             'statusCode'=> 200,
             'success'=>true,
-            'message' => 'رمز ورود به شماره شما ارسال شد'
+            'message' => 'رمز ورود به شماره شما ارسال شد',
+            'errors' => null
         ]);
      
     }
 
-    public function me()
+    public function getUser(Request $request)
     {
-        
-        return response()->json(auth()->user());
-    }
+        try {
+            $user = auth()->user();  
+                
+            if (!$user) {
+                return response()->json([
+                    'data' => null,
+                    'statusCode' => 401,
+                    'success' => false,
+                    'message' => 'توکن نامعتبر یا منقضی شده است.',
+                    'errors' => null
+                ], 401);
+            }
 
+            return response()->json([
+                'data' => [
+                    'user' => $user  
+                ],
+                'statusCode' => 200,
+                'success' => true,
+                'message' => 'اطلاعات کاربر با موفقیت دریافت شد.',
+                'errors' => null
+            ]);
+        } catch (JWTException $e) {
+            return response()->json([
+                'data' => null,
+                'statusCode' => 401,
+                'success' => false,
+                'message' => 'خطا در پردازش توکن.',
+                'errors' => null
+            ], 401);
+        }
+    }
 
     public function verifyOtp(Request $request)
     {
@@ -105,6 +138,7 @@ class AuthController extends Controller
                 'statusCode' => 401,
                 'message' => 'شماره یافت نشد !',
                 'success' => true,
+                'errors'=> null,
             ], 401);
         }
         if ($otp->isExpired()) {
@@ -114,7 +148,7 @@ class AuthController extends Controller
                 'statusCode' => 503,
                 'message' => 'لطفا دوباره شماره را وارد کنید',
                 'success' => true,
-                'error' => 'OTP expired, please request a new one'
+                'errors' => null,
             ], 503);
         }
         
@@ -125,6 +159,7 @@ class AuthController extends Controller
                 'statusCode' => 429,
                 'message' =>  'لطفا دوباره شماره را وارد کنید',
                 'success' => true,
+                'errors' => null
                 
             ], 429);
         }
@@ -137,6 +172,7 @@ class AuthController extends Controller
                 'statusCode' => 401,
                 'message' => 'رمز اشتباه است!',
                 'success' => false,
+                'errors' => null
             ], 401);
         }
         
@@ -170,7 +206,7 @@ class AuthController extends Controller
             'statusCode'=> 200,
             'message'=> 'موفقیت آمیز',
             'success'=>true,
-
+            'errors' => null
         ]);
     }
 }
