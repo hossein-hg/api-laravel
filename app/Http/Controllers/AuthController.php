@@ -16,6 +16,7 @@ class AuthController extends Controller
 {
     public function register(RegisterRequest $request)
     {
+        
         $code = rand(100000, 999999);
        
         Otp::updateOrCreate(

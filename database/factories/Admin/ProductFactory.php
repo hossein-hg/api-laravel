@@ -18,10 +18,20 @@ class ProductFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
+            'stars' => 5,
+            'url' => fake()->url(),
+            'category_id' => 1,
+            'price' => mt_rand(2000, 50000000),
+            'oldPrice' => mt_rand(2000, 10000000),
+            'cover' => fake()->imageUrl(),
+            'inventory' => 1,
+            'shortDescription' => fake()->text(),
+            'salesCount' => mt_rand(2,3),
+            'description' => fake()->text(),
+            'countdown' => mt_rand(2, 3),
+            'warehouseInventory' => mt_rand(2, 3),
+            'satisfaction' => mt_rand(2, 3),
+            'additionalInformation' => fake()->text(),
         ];
     }
 }

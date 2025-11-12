@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
+use App\Models\Log;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
@@ -26,5 +27,21 @@ return Application::configure(basePath: dirname(__DIR__))
                     'errors' => null
                 ], 401);
             }
+        });
+
+        $exceptions->report(function (Throwable $e) {
+            // ذخیره در DB
+            Log::create([
+                'level' => 'error',
+                'message' => $e->getMessage(),
+                'context' => ['code' => $e->getCode()],  // جزئیات اضافی
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'user_id' => auth()->id() ?? null,  // اگر کاربر لاگین باشه
+                'ip_address' => request()->ip() ?? null,
+                'user_agent' => request()->userAgent() ?? null,
+                'url' => request()->fullUrl() ?? null,
+            ]);
         });
     })->create();
