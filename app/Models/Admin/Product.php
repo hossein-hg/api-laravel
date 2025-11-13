@@ -65,6 +65,8 @@ class Product extends Model
     {
         // همه فیلترهای گروه
         $filters = $this->group->filters;
+        
+        
        
         // لیست گزینه‌های انتخاب شده محصول
         $selectedOptions = $this->options()->get()->keyBy('pivot.filter_id');
@@ -77,7 +79,7 @@ class Product extends Model
                 'option' => $selectedOptions->has($filter->id) ? $selectedOptions[$filter->id] : null
             ];
         }
-        
+       
         return $result;
     }
 
