@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 class ProductsController extends Controller
 {
     public function index(){
-        $products = Product::with('category:id,name,path','images','group','options')  // eager load relations
+        $products = Product::with('category:id,name,path','images','group','options','comments')  // eager load relations
             ->paginate(perPage: 2);
 
         

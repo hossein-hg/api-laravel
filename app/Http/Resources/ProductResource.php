@@ -14,28 +14,8 @@ class ProductResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $filters = $this->group->filters ?? null;
-        $selectedOptions = $this->options()->get()->keyBy('pivot.filter_id');
-        $result = [];
-        if ($filters) {
-        foreach ($filters as $filter) {
-            $result[] = [
-                'filter' => $filter,
-                'option' => $selectedOptions->has($filter->id) ? $selectedOptions[$filter->id] : null
-            ];
-        }
-    }
-
-        // Format (اختیاری)
-        $features = collect($result)->map(function ($item) {
-            return 
-                $item['filter']->name." ".$item['option']->name
-            ;
-        }); 
        
         
-        // dd($result[1]['filter']->name, $result[1]['option']->name);   
-         
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -52,11 +32,12 @@ class ProductResource extends JsonResource
             'satisfaction'=> $this->satisfaction,
             'additionalInformation'=> $this->additionalInformation,
             'images' => $this->whenLoaded('images', fn() => $this->images->pluck('path')), 
-            
             'categoryName' => $this->whenLoaded('category', fn() => $this->category->name),
             'categoryPath' => $this->whenLoaded('category', fn() => $this->category->path),
             'stars'=>$this->stars,
-            'features' => $features,
+            'features' => $this->filtersWithSelectedOptions(),
+            'ratio'=>$this->ratio,
+            'comments'=> $this->whenLoaded('comments', fn() => $this->comments->pluck('body')),
             'update' => $this->updated_at->format('Y-m-d H:i:s'),
         ];
     }

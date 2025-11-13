@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 use App\Models\Admin\Category;
+use App\Models\Admin\Comment;
 use App\Models\Admin\Image;
 use App\Models\Admin\Feature;
 
@@ -63,24 +64,29 @@ class Product extends Model
 
     public function filtersWithSelectedOptions()
     {
-        // همه فیلترهای گروه
-        $filters = $this->group->filters;
-        
-        
-       
-        // لیست گزینه‌های انتخاب شده محصول
+        $filters = $this->group->filters ?? null;
         $selectedOptions = $this->options()->get()->keyBy('pivot.filter_id');
-
-        // آماده کردن آرایه نهایی
         $result = [];
-        foreach ($filters as $filter) {
-            $result[] = [
-                'filter' => $filter,
-                'option' => $selectedOptions->has($filter->id) ? $selectedOptions[$filter->id] : null
-            ];
+        if ($filters) {
+            foreach ($filters as $filter) {
+                $result[] = [
+                    'filter' => $filter,
+                    'option' => $selectedOptions->has($filter->id) ? $selectedOptions[$filter->id] : null
+                ];
+            }
         }
-       
-        return $result;
+
+        return collect($result)->map(function ($item) {
+            return
+                $item['filter']->name . " " . $item['option']->name
+            ;
+        });
+
+    }
+
+    public function comments()
+    {
+        return $this->morphMany(Comment::class, 'commentable');
     }
 
 
