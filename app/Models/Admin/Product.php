@@ -3,12 +3,14 @@
 namespace App\Models\Admin;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+use Carbon\Carbon;
 use App\Models\Admin\Category;
 use App\Models\Admin\Comment;
 use App\Models\Admin\Image;
 use App\Models\Admin\Feature;
-
+use App\Models\Admin\Tag;
+use App\Models\Admin\Offer;
+use DB;
 class Product extends Model
 {
     // protected function casts(): array
@@ -62,6 +64,16 @@ class Product extends Model
         return $this->belongsToMany(Option::class, 'option_product')->withPivot('filter_id');
     }
 
+ 
+
+    public function tags()
+    {
+        // Fix: explicit pivot table name, foreign keys, و FQN برای Tag
+        return $this->belongsToMany(
+            Tag::class,  
+        );
+    }
+
     public function filtersWithSelectedOptions()
     {
         $filters = $this->group->filters ?? null;
@@ -89,6 +101,25 @@ class Product extends Model
         return $this->morphMany(Comment::class, 'commentable');
     }
 
+    public function offer(){
+        return $this->hasOne(Offer::class);
+    }
+
+    public function activeOffer(){
+        $offer = $this->offer;
+        if ($offer) {
+            $startTime = Carbon::parse($offer->start_time);  
+            $endTime = Carbon::parse($offer->end_time);  
+            $now = Carbon::now();
+            
+           if ($startTime < $now && $now < $endTime) {  // یا $givenTime < $now
+                return $offer->percent;
+                }
+            return 0;            
+        }
+        return 0;
+}
+    
 
 
 

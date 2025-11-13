@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Admin\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -35,9 +36,14 @@ class ProductResource extends JsonResource
             'categoryName' => $this->whenLoaded('category', fn() => $this->category->name),
             'categoryPath' => $this->whenLoaded('category', fn() => $this->category->path),
             'stars'=>$this->stars,
+            // 'tags'=> $this->whenLoaded('tags', fn() => $this->tags()->get()->pluck('name')),
+            'discount'=>$this->activeOffer(),
+            'tags' => $this->tags()->get()->pluck('name'),
             'features' => $this->filtersWithSelectedOptions(),
             'ratio'=>$this->ratio,
             'comments'=> $this->whenLoaded('comments', fn() => $this->comments->pluck('body')),
+            'commentsCount'=>$this->whenLoaded('comments', fn() => $this->comments()->count()),
+            'related_products'=>Product::where('category_id',$this->category_id)->get()->except($this->id)->pluck('name'),
             'update' => $this->updated_at->format('Y-m-d H:i:s'),
         ];
     }
