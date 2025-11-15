@@ -10,6 +10,10 @@ use App\Models\Admin\Image;
 use App\Models\Admin\Feature;
 use App\Models\Admin\Tag;
 use App\Models\Admin\Offer;
+use App\Models\Admin\Warranty;
+use App\Models\Admin\Size;
+use App\Models\Admin\Color;
+use App\Models\Admin\Brand;
 use DB;
 class Product extends Model
 {
@@ -118,7 +122,27 @@ class Product extends Model
             return 0;            
         }
         return 0;
-}
+    }
+
+    public function warranties()
+    {
+        return $this->hasMany(Warranty::class, 'product_id', 'id');
+    }
+
+    public function sizes()
+    {
+        return $this->hasMany(Size::class, 'product_id', 'id');
+    }
+
+    public function colors()
+    {
+        return $this->hasMany(Color::class, 'product_id', 'id');
+    }
+
+    public function brands()
+    {
+        return $this->hasMany(Brand::class, 'product_id', 'id');
+    }
     
 
 

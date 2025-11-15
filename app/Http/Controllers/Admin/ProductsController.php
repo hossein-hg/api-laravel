@@ -39,9 +39,10 @@ class ProductsController extends Controller
 
 
 
-        $products = Product::with('tags','category','images','group','options','comments')  // eager load relations
+        $products = Product::with('tags','category','images','group','options','comments','colors','warranties','sizes','brands')  // eager load relations
             ->paginate(perPage: 2);
-        $product = Product::find(6);
+        // $product = Product::find(6);
+        // dd($product->colors);
         return new ProductCollection($products);
     }
 }

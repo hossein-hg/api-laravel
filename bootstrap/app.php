@@ -34,11 +34,11 @@ return Application::configure(basePath: dirname(__DIR__))
             Log::create([
                 'level' => 'error',
                 'message' => $e->getMessage(),
-                'context' => ['code' => $e->getCode()],  // جزئیات اضافی
+                'context' => ['code' => $e->getCode()], 
                 'trace' => $e->getTraceAsString(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'user_id' => auth()->id() ?? null,  // اگر کاربر لاگین باشه
+                'user_id' => auth()->id() ?? null,
                 'ip_address' => request()->ip() ?? null,
                 'user_agent' => request()->userAgent() ?? null,
                 'url' => request()->fullUrl() ?? null,

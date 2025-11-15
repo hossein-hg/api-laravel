@@ -85,8 +85,10 @@ class AuthController extends Controller
     public function getUser(Request $request)
     {
         try {
-            $user = auth()->user();  
-                
+            $user = auth()->user();
+            // dd($user);
+            $roles = $user->getRoleNames();
+            // dd($roles);    
             if (!$user) {
                 return response()->json([
                     'data' => null,
@@ -96,7 +98,12 @@ class AuthController extends Controller
                     'errors' => null
                 ], 401);
             }
+            
+            $roles = $user->getRoleNames();
 
+           
+            unset($user->roles);
+            $user->roles = $roles;
             return response()->json([
                 'data' => [
                     'user' => $user  
@@ -210,4 +217,18 @@ class AuthController extends Controller
             'errors' => null
         ]);
     }
+
+    public function logout()
+    {
+        JWTAuth::invalidate(JWTAuth::getToken());
+        return response()->json([
+            'data' => null,
+            'statusCode' => 200,
+            'message' => 'از حساب خارج شدید ',
+            'success' => true,
+            'errors' => null
+        ]);
+    }
+
+   
 }
