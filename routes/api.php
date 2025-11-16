@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CartController;
 use App\Http\Controllers\Admin\ProductsController;
 use App\Models\Admin\Product;
 use App\Models\User;
@@ -21,7 +22,7 @@ Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
 Route::get('product', [ProductsController::class, 'index']);
 Route::get('product/{product:name}',[ProductsController::class,'show']);
 
-
+Route::middleware('auth:api')->get('cart', [CartController::class, 'index']);
 
 Route::get('roles',function(){
     // Role::create([
