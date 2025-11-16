@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ProductsController;
+use App\Models\Admin\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -16,7 +17,11 @@ Route::post('login', [AuthController::class, 'login']);
 Route::post('logout', [AuthController::class, 'logout']);
 Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
 
-Route::resource('product',ProductsController::class);
+// Route::resource('product',ProductsController::class);
+Route::get('product', [ProductsController::class, 'index']);
+Route::get('product/{product:name}',[ProductsController::class,'show']);
+
+
 
 Route::get('roles',function(){
     // Role::create([
@@ -38,156 +43,21 @@ Route::get('roles',function(){
     $user->assignRole('orders admin', 'finance admin','warehouse admin');
 });
 
-Route::get('/navbar',function(){
+
+Route::get('test',function(){
+    $now = strtotime('2025-11-16');
+    $product = Product::findOrFail(6);
+    $threeDaysLater = $now + (3 * 24 * 60 * 60); // 3 روز * 24 ساعت * 60 دقیقه * 60 ثانیه
+
+    // تبدیل به میلی‌ثانیه
+    $milliseconds = $threeDaysLater * 1000;
+    // $product->tags = ['سامسونگ', 'ال‌جی'];
+    // $product->save();
+    return $milliseconds;
     
-
-
-
-$navbarItems = [
-    [
-        'id' => 1,
-        'faName' => 'خانه',
-        'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M80 212v236a16 16 0 0 0 16 16h96V328a24 24 0 0 1 24-24h80a24 24 0 0 1 24 24v136h96a16 16 0 0 0 16-16V212"/><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M480 256L266.89 52c-5-5.28-16.69-5.34-21.78 0L32 256m368-77V64h-48v69"/></svg>',
-        'path' => '/',
-    ],
-    [
-        'id' => 2,
-        'faName' => 'لیست محصولات',
-        'path' => '/product/list',
-        'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" fill-rule="evenodd" d="M464 144c8.837 0 16 7.163 16 16v304c0 8.836-7.163 16-16 16H160c-8.837 0-16-7.164-16-16V160c0-8.837 7.163-16 16-16zm-52 68H212v200h200zm493.333 87.686c6.248 6.248 6.248 16.379 0 22.627l-181.02 181.02c-6.248 6.248-16.378 6.248-22.627 0l-181.019-181.02c-6.248-6.248-6.248-16.379 0-22.627l181.02-181.02c6.248-6.248 16.378-6.248 22.627 0zm-84.853 11.313L713 203.52L605.52 311L713 418.48zM464 544c8.837 0 16 7.164 16 16v304c0 8.837-7.163 16-16 16H160c-8.837 0-16-7.163-16-16V560c0-8.836 7.163-16 16-16zm-52 68H212v200h200zm452-68c8.837 0 16 7.164 16 16v304c0 8.837-7.163 16-16 16H560c-8.837 0-16-7.163-16-16V560c0-8.836 7.163-16 16-16zm-52 68H612v200h200z"/></svg>',
-        'children' => [
-            [
-                'id' => 1,
-                'faName' => 'خودروها',
-                'path' => 'cars',
-                'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28"><path fill="currentColor" d="M8.25 16.5a1.25 1.25 0 1 0 0-2.5a1.25 1.25 0 0 0 0 2.5M21 15.25a1.25 1.25 0 1 1-2.5 0a1.25 1.25 0 0 1 2.5 0m-9.25 1.25a.75.75 0 0 0 0 1.5h4.5a.75.75 0 0 0 0-1.5zm-6.523-7l-.28 1.119A2.75 2.75 0 0 0 3 13.25v9A2.75 2.75 0 0 0 5.75 25h1a2.75 2.75 0 0 0 2.75-2.75v-1h9v1A2.75 2.75 0 0 0 21.25 25h1A2.75 2.75 0 0 0 25 22.25v-9a2.75 2.75 0 0 0-1.947-2.63l-.28-1.12h.977a.75.75 0 0 0 0-1.5h-1.352l-.602-2.41a3.75 3.75 0 0 0-3.638-2.84H9.842a3.75 3.75 0 0 0-3.638 2.84L5.602 8H4.25a.75.75 0 0 0 0 1.5zm4.615-5.25h8.316a2.25 2.25 0 0 1 2.183 1.704l1.136 4.546H6.523L7.66 5.954A2.25 2.25 0 0 1 9.842 4.25M20 22.25v-1h3.5v1c0 .69-.56 1.25-1.25 1.25h-1c-.69 0-1.25-.56-1.25-1.25m-12-1v1c0 .69-.56 1.25-1.25 1.25h-1c-.69 0-1.25-.56-1.25-1.25v-1zM5.75 12h16.5c.69 0 1.25.56 1.25 1.25v6.5h-19v-6.5c0-.69.56-1.25 1.25-1.25"/></svg>',
-                'children' => [
-                    [
-                        'id' => 1,
-                        'faName' => 'سمند',
-                        'path' => 'samand',
-                    ],
-                    [
-                        'id' => 2,
-                        'faName' => 'پیکان',
-                        'path' => 'peykan',
-                    ],
-                    [
-                        'id' => 3,
-                        'faName' => 'مگان',
-                        'path' => 'megan',
-                    ],
-                    [
-                        'id' => 4,
-                        'faName' => 'آردی',
-                        'path' => 'rd',
-                    ],
-                    [
-                        'id' => 5,
-                        'faName' => 'ساندرو',
-                        'path' => 'sandro',
-                    ],
-                    [
-                        'id' => 6,
-                        'faName' => 'تیبا',
-                        'path' => 'tiba',
-                    ],
-                ],
-            ],
-            [
-                'id' => 2,
-                'faName' => 'برندها',
-                'path' => 'brands',
-                'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M21 12a9 9 0 1 1-18 0a9 9 0 0 1 18 0"/><path d="m9 15l1.5-4.5L15 9l-1.5 4.5z"/></g></svg>',
-                'children' => [
-                    [
-                        'id' => 1,
-                        'faName' => 'بوش',
-                        'path' => 'bosch',
-                    ],
-                    [
-                        'id' => 2,
-                        'faName' => 'اس ان آر',
-                        'path' => 'snr',
-                    ],
-                    [
-                        'id' => 3,
-                        'faName' => 'اورجینال',
-                        'path' => 'orginal',
-                    ],
-                    [
-                        'id' => 4,
-                        'faName' => 'قایم',
-                        'path' => 'qaem',
-                    ],
-                    [
-                        'id' => 5,
-                        'faName' => 'شوبرت هلند',
-                        'path' => 'schubert',
-                    ],
-                    [
-                        'id' => 6,
-                        'faName' => 'ایساکو',
-                        'path' => 'isaco',
-                    ],
-                ],
-            ],
-            [
-                'id' => 3,
-                'faName' => 'بخش ها',
-                'path' => 'sections',
-                'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"><path d="M31 31h9a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H19a2 2 0 0 0-2 2v9"/><path d="M17 17H8a2 2 0 0 0-2 2v21a2 2 0 0 0 2 2h21a2 2 0 0 0 2-2v-9"/><rect width="14" height="14" x="17" y="17" rx="2"/></g></svg>',
-                'children' => [
-                    [
-                        'id' => 1,
-                        'faName' => 'سیستم انتقال نیرو',
-                        'path' => 'power-transmission',
-                    ],
-                    [
-                        'id' => 2,
-                        'faName' => 'بلبرینگ',
-                        'path' => 'bearing',
-                    ],
-                    [
-                        'id' => 3,
-                        'faName' => 'سیستم تمیز کننده',
-                        'path' => 'clean-system',
-                    ],
-                    [
-                        'id' => 4,
-                        'faName' => 'شیلنگ، لوله، کابل',
-                        'path' => 'cable',
-                    ],
-                    [
-                        'id' => 5,
-                        'faName' => 'سیستم تهویه',
-                        'path' => 'ventilation-system',
-                    ],
-                    [
-                        'id' => 6,
-                        'faName' => 'کاسه نمد و اورینگ',
-                        'path' => 'oring',
-                    ],
-                ],
-            ],
-        ],
-    ],
-    [
-        'id' => 3,
-        'faName' => 'پرداخت نقدی',
-        'path' => '/pay',
-        'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 20H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2Z"/><path fill="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M16.5 14a.5.5 0 1 1 0-1a.5.5 0 0 1 0 1"/><path d="M18 7V5.603a2 2 0 0 0-2.515-1.932l-11 2.933A2 2 0 0 0 3 8.537V9"/></g></svg>',
-    ],
-    [
-        'id' => 4,
-        'faName' => 'درباره ما',
-        'path' => '/about-us',
-        'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M9 12c1.93 0 3.5-1.57 3.5-3.5S10.93 5 9 5S5.5 6.57 5.5 8.5S7.07 12 9 12m0-5c.83 0 1.5.67 1.5 1.5S9.83 10 9 10s-1.5-.67-1.5-1.5S8.17 7 9 7m0 6.75c-2.34 0-7 1.17-7 3.5V18c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-.75c0-2.33-4.66-3.5-7-3.5M4.34 17c.84-.58 2.87-1.25 4.66-1.25s3.82.67 4.66 1.25zm11.7-3.19c1.16.84 1.96 1.96 1.96 3.44V19h3c.55 0 1-.45 1-1v-.75c0-2.02-3.5-3.17-5.96-3.44M15 12c1.93 0 3.5-1.57 3.5-3.5S16.93 5 15 5c-.54 0-1.04.13-1.5.35c.63.89 1 1.98 1 3.15s-.37 2.26-1 3.15c.46.22.96.35 1.5.35"/></svg>',
-    ],
-];
-
-return response()->json($navbarItems);
 });
+
+
 
 
 
@@ -507,3 +377,5 @@ Route::get('get-header', function(){
     ]);
 });
 Route::middleware('auth:api')->get('getUser', [AuthController::class, 'getUser']);
+
+

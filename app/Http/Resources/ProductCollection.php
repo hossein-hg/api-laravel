@@ -16,7 +16,7 @@ class ProductCollection extends ResourceCollection
     {
         return [
             'data' => [
-                'results'=> ProductResource::collection($this->collection),
+                'results'=> ProductListResource::collection($this->collection),
                 'hasPrevPage' => !$this->onFirstPage(),  // true اگر صفحه قبلی وجود داشته باشه
                 'hasNextPage' => $this->hasMorePages(),  // true اگر صفحه بعدی وجود داشته باشه
                 'page' => $this->currentPage(),  // current page (duplicate با current_page؟ اگر نه، تغییر بده)

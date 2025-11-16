@@ -13,10 +13,11 @@ class ProductResource extends JsonResource
      *
      * @return array<string, mixed>
      */
+
+    public static $wrap = null;
     public function toArray(Request $request): array
     {
        
-        
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -32,23 +33,24 @@ class ProductResource extends JsonResource
             'warehouseInventory'=> $this->warehouseInventory,
             'satisfaction'=> $this->satisfaction,
             'additionalInformation'=> $this->additionalInformation,
-            'images' => $this->whenLoaded('images', fn() => $this->images->pluck('path')), 
-            'categoryName' => $this->whenLoaded('category', fn() => $this->category->name),
-            'categoryPath' => $this->whenLoaded('category', fn() => $this->category->path),
+            'images' => $this->images->pluck('path'), 
+            'categoryName' =>  $this->group->name,
+            'categoryPath' =>$this->group->url,
             'stars'=>$this->stars,
-            // 'tags'=> $this->whenLoaded('tags', fn() => $this->tags()->get()->pluck('name')),
             'discount'=>$this->activeOffer(),
-            'tags' => $this->tags()->get()->pluck('name'),
+            'tags' => $this->tags,
             'features' => $this->filtersWithSelectedOptions(),
             'ratio'=>$this->ratio,
-            'comments'=> $this->whenLoaded('comments', fn() => $this->comments->pluck('body')),
-            'warranties'=> $this->whenLoaded('warranties', fn() => $this->warranties->pluck('name')),
-            'sizes'=> $this->whenLoaded('sizes', fn() => $this->sizes->pluck('size')),
-            'colors'=> $this->whenLoaded('colors', fn() => $this->colors->pluck('name')),
-            'brands'=> $this->whenLoaded('brands', fn() => $this->brands->pluck('name')),
-            'commentsCount'=>$this->whenLoaded('comments', fn() => $this->comments()->count()),
-            'related_products'=>Product::where('category_id',$this->category_id)->get()->except($this->id)->pluck('name'),
+            'comments'=> $this->comments->pluck('body'),
+            'warranties'=>  $this->warranties->pluck('name'),
+            'sizes'=> $this->sizes->pluck('size'),
+            'colors'=> $this->colors->pluck('name'),
+            'brands'=> $this->brands->pluck('name'),
+            'commentsCount'=>$this->comments()->count(),
+            'related_products'=>Product::where('group_id',$this->group_id)->get()->except($this->id)->pluck('name'),
             'update' => $this->updated_at->format('Y-m-d H:i:s'),
         ];
     }
+
+   
 }

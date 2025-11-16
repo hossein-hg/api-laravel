@@ -6,9 +6,11 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use App\Models\Log;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
+       
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
@@ -27,6 +29,16 @@ return Application::configure(basePath: dirname(__DIR__))
                     'errors' => null
                 ], 401);
             }
+        });
+
+       
+        $exceptions->render(function (NotFoundHttpException $e, $request) {
+            return response()->json([
+                'data' => null,
+                'statusCode' => 404,
+                'message' => 'مسیر یا API مورد نظر یافت نشد',
+                'errors' => null
+            ], 404);
         });
 
         $exceptions->report(function (Throwable $e) {

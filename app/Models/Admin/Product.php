@@ -8,12 +8,13 @@ use App\Models\Admin\Category;
 use App\Models\Admin\Comment;
 use App\Models\Admin\Image;
 use App\Models\Admin\Feature;
-use App\Models\Admin\Tag;
+
 use App\Models\Admin\Offer;
 use App\Models\Admin\Warranty;
 use App\Models\Admin\Size;
 use App\Models\Admin\Color;
 use App\Models\Admin\Brand;
+use App\Models\Admin\FilterOption;
 use DB;
 class Product extends Model
 {
@@ -28,6 +29,11 @@ class Product extends Model
     //     ];
     // }
     use HasFactory;
+
+    // public function getRouteKeyName()
+    // {
+    //     return 'slug';
+    // }
     protected $fillable = [
         'name',
         'stars',
@@ -70,13 +76,7 @@ class Product extends Model
 
  
 
-    public function tags()
-    {
-        // Fix: explicit pivot table name, foreign keys, و FQN برای Tag
-        return $this->belongsToMany(
-            Tag::class,  
-        );
-    }
+   
 
     public function filtersWithSelectedOptions()
     {
@@ -91,12 +91,15 @@ class Product extends Model
                 ];
             }
         }
-
         return collect($result)->map(function ($item) {
-            return
-                $item['filter']->name . " " . $item['option']->name
-            ;
-        });
+            $filter = $item['filter'] ? $item['filter']->name : '';
+            $option = $item['option'] ? $item['option']->name : '';
+            if ($option != ''){
+                return
+                    $filter." ".$option;
+            }
+        })->filter() // این خط null ها را حذف می‌کند
+            ->values();
 
     }
 
@@ -142,6 +145,28 @@ class Product extends Model
     public function brands()
     {
         return $this->hasMany(Brand::class, 'product_id', 'id');
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'tags' => 'array', 
+          
+        ];
+    }
+
+    public function listFilterOptions(){
+        $result = [];
+        $filters = $this->group->filters ?? null;
+        if ($filters) {
+            foreach ($filters as $filter) {
+                if ($filter->status == 1){
+                    $options = FilterOption::where('filter_id', $filter->id)->get();
+                    $result[$filter->name] = $options->pluck('option');
+                }
+            }
+        }
+        return $result;
     }
     
 

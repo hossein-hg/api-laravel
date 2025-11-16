@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
+use App\Http\Resources\ProductListResource;
+use App\Http\Resources\ProductResource;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductCollection;
@@ -39,10 +41,25 @@ class ProductsController extends Controller
 
 
 
-        $products = Product::with('tags','category','images','group','options','comments','colors','warranties','sizes','brands')  // eager load relations
+        $products = Product::with('category','images','group','options','comments','colors','warranties','sizes','brands')  // eager load relations
             ->paginate(perPage: 2);
         // $product = Product::find(6);
         // dd($product->colors);
         return new ProductCollection($products);
+    }
+
+
+    public function show(Product $product)
+    {
+        // dd($product);
+        $data = [
+            'data'=> ['product'=>new ProductResource($product)],
+            'statusCode' => 200,
+            'message' => 'موفقیت آمیز',
+            'success' => true,
+            'errors' => null,
+        ];
+        return response()->json($data);
+     
     }
 }
