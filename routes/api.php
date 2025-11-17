@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CartController;
 use App\Http\Controllers\Admin\ProductsController;
+use App\Http\Controllers\HomeController;
 use App\Models\Admin\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -22,7 +23,17 @@ Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
 Route::get('product', [ProductsController::class, 'index']);
 Route::get('product/{product:name}',[ProductsController::class,'show']);
 
-Route::middleware('auth:api')->get('cart', [CartController::class, 'index']);
+
+Route::get('home', [HomeController::class, 'index']);
+
+
+Route::middleware('auth:api')->group(function () {
+    Route::get('getUser', [AuthController::class, 'getUser']);
+    Route::get('cart', [CartController::class, 'index']);
+    Route::post('cart/update', [CartController::class, 'update']);
+    Route::post('cart/remove', [CartController::class, 'remove']);
+
+});
 
 Route::get('roles',function(){
     // Role::create([
@@ -377,6 +388,6 @@ Route::get('get-header', function(){
         'errors' => null
     ]);
 });
-Route::middleware('auth:api')->get('getUser', [AuthController::class, 'getUser']);
+
 
 

@@ -62,4 +62,13 @@ class ProductsController extends Controller
         return response()->json($data);
      
     }
+
+    public function latestProduct(){
+        
+      
+        
+    }
+
+
+
 }

@@ -50,7 +50,7 @@ class AuthController extends Controller
                  'data' => null,
                 'statusCode'=> 422,
                 'success'=>false,
-                'message' => 'خطا اعتبارسنجی',
+                'message' => 'کاربری با این شماره تلفن یافت نشد ',
                  "errors"=> [
                     "phone" => [
                         "کاربری با این شماره تلفن یافت نشد."
@@ -69,6 +69,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'gender' => $user->gender,
                 'expires_at' => Carbon::now()->addMinutes(2),
+                'user_id' => $user->id,
                 'errors' => null
             ]
         );
@@ -133,12 +134,7 @@ class AuthController extends Controller
         
         $otp = Otp::where('phone', $request->phone)
             ->first();
-        
-        // if ($otp->code !== $request->code) {
-          
-        //     $remaining = 5 - $otp->attempts;
-        //     return response()->json(['error' => "Invalid OTP, $remaining attempts remaining"], 401);
-        // }
+     
         if (!$otp) {
             // OTP پیدا نشد، نمی‌توان attempts افزایش داد
             return response()->json([
@@ -185,22 +181,25 @@ class AuthController extends Controller
         }
         
 
+        if ($otp->user_id){
+            $user = User::find($otp->user_id);
+        }
+        else{
+            // ایجاد کاربر با اطلاعات موجود در OTP
+            $user = User::create([
+                'name' => $otp->name,
+                'phone' => $otp->phone,
+                'gender' => $otp->gender,
+                // 'password' => bcrypt(Str::random(8)) // رمز عبور تصادفی
+            ]);
+        }
 
 
 
 
+       
 
-
-
-        // ایجاد کاربر با اطلاعات موجود در OTP
-        $user = User::create([
-            'name' => $otp->name,
-            'phone' => $otp->phone,
-            'gender' => $otp->gender,
-            // 'password' => bcrypt(Str::random(8)) // رمز عبور تصادفی
-        ]);
-
-        // $otp->delete(); // حذف OTP پس از استفاده
+        $otp->delete(); // حذف OTP پس از استفاده
 
         $token = JWTAuth::fromUser($user);
 

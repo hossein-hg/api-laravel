@@ -17,12 +17,17 @@ class ProductResource extends JsonResource
     public static $wrap = null;
     public function toArray(Request $request): array
     {
-       
+        $price = (int)$this->price;
+        $price = (string) number_format($price);
+
+        $oldPrice = (int) $this->oldPrice;
+        $oldPrice = (string) number_format($oldPrice);
+        
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'price' => $this->price,
-            'oldPrice' => $this->oldPrice,
+            'price' => $price,
+            'oldPrice' => $oldPrice,
             'cover' => $this->cover,
             'url' => $this->url,
             'inventory' => $this->inventory,
@@ -44,10 +49,10 @@ class ProductResource extends JsonResource
             'comments'=> $this->comments->pluck('body'),
             'warranties'=>  $this->warranties->pluck('name'),
             'sizes'=> $this->sizes->pluck('size'),
-            'colors'=> $this->colors->pluck('name'),
+            'colors'=> $this->colors->pluck('color'),
             'brands'=> $this->brands->pluck('name'),
             'commentsCount'=>$this->comments()->count(),
-            'related_products'=>Product::where('group_id',$this->group_id)->get()->except($this->id)->pluck('name'),
+            'related_products'=>Product::where('group_id',$this->group_id)->get()->except($this->id),
             'update' => $this->updated_at->format('Y-m-d H:i:s'),
         ];
     }

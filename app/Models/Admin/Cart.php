@@ -16,5 +16,5 @@ class Cart extends Model
         return $this->belongsToMany(Product::class)->withPivot('quantity','price')->withTimestamps();
     }
 
-
+    protected $fillable = ['total_price','count','user_id'];
 }

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 class Otp extends Model
 {
-         protected $fillable = ['phone','code','name','gender','expires_at','attemps'];
+         protected $fillable = ['phone','code','name','gender','expires_at','attemps','user_id'];
     protected $dates = ['expires_at'];
     public function isExpired()
     {

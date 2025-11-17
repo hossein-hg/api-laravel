@@ -12,15 +12,20 @@ class ProductListResource extends JsonResource
      *
      * @return array<string, mixed>
      */
-
+    
     public static $wrap = null;
     public function toArray(Request $request): array
     {
+        $price = (int) $this->price;
+        $price = (string) number_format($price);
+
+        $oldPrice = (int) $this->oldPrice;
+        $oldPrice = (string) number_format($oldPrice);
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'price' => $this->price,
-            'oldPrice' => $this->oldPrice,
+            'price' => $price,
+            'oldPrice' => $oldPrice,
             'cover' => $this->cover,
             'url' => $this->url,
             'inventory' => $this->inventory,
@@ -42,7 +47,7 @@ class ProductListResource extends JsonResource
             'comments' => $this->whenLoaded('comments', fn() => $this->comments->pluck('body')),
             'warranties' => $this->whenLoaded('warranties', fn() => $this->warranties->pluck('name')),
             'sizes' => $this->whenLoaded('sizes', fn() => $this->sizes->pluck('size')),
-            'colors' => $this->whenLoaded('colors', fn() => $this->colors->pluck('name')),
+            'colors' => $this->whenLoaded('colors', fn() => $this->colors->pluck('color')),
             'brands' => $this->whenLoaded('brands', fn() => $this->brands->pluck('name')),
             'commentsCount' => $this->whenLoaded('comments', fn(): mixed => $this->comments()->count()),
             'related_products' => Product::where('group_id', $this->group_id)->get()->except($this->id)->pluck('name'),
