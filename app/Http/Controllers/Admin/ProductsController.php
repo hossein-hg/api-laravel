@@ -46,6 +46,27 @@ class ProductsController extends Controller
         // $product = Product::find(6);
         // dd($product->colors);
 
+       
+        if ($request->filled('search') && strlen($request->input('search')) >= 3) {
+            
+            $search = $request->input('search');
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        if ($request->filled('global_search') && strlen($request->input('global_search')) >= 3) {
+            $search = $request->input('global_search');
+
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('group', function ($q2) use ($search) {
+                    $q2->where('name', 'like', "%{$search}%");
+                })
+                    ->orWhereHas('brands', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+
         if ($request->filled('filterCategory')) {
             $categories = explode(',', $request->filterCategory);
 
@@ -103,7 +124,7 @@ class ProductsController extends Controller
         }
 
         // pagination
-        $products = $query->paginate(perPage: 1);
+        $products = $query->paginate(perPage: 3);
 
         return new ProductCollection($products);
         

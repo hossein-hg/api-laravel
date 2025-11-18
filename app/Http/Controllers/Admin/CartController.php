@@ -77,44 +77,101 @@ class CartController extends Controller
     public function update(Request $request)
     {
         
-        
-        $count = $request->count;
-        $product = Product::findOrFail($request->id);
-        if ($product->warehouseInventory < ($count * $product->ratio)) {
+       
+        foreach ($request->all() as $key => $request) {
+            
+                $count = $request['count'];
+           
+                $product = Product::findOrFail($request['id']);
+                $discount = $product->activeOffer()['percent'];
+                $price = $product->price;
+                if ($discount > 0){
+                     $price = $price * ((100 - $discount)/100);
+                }
+                if ($product->warehouseInventory < ($count * $product->ratio)) {
 
-            return response()->json([
-                'data' => null,
-                'statusCode' => 401,
-                'success' => true,
-                'message' => 'تعداد انتخاب شده بیشتر از موجودی انبار است',
-                'errors' => null
-            ]);
+                return response()->json([
+                    'data' => null,
+                    'statusCode' => 401,
+                    'success' => true,
+                    'message' => 'تعداد انتخاب شده بیشتر از موجودی انبار است',
+                    'errors' => null
+                ]);
+            }
+            $user_id = auth()->user()->id;
+            $cart = Cart::firstOrCreate(
+                ['user_id' => $user_id],
+                ['count' => 0, 'total_price' => 0]
+            );
+            $ratio = $product->ratio;
+
+            $total_price_for_product = $count * $price * $ratio;
+            // dd($total_price_for_product,$count,$price,$ratio);
+            // بررسی اگر محصول قبلاً در سبد بود
+            $existingProduct = $cart->products()->find($product->id);
+
+            if ($existingProduct) {
+                // update pivot
+                $cart->products()->updateExistingPivot($product->id, [
+                    'quantity' => $count,
+                    'price' => $total_price_for_product,
+                ]);
+            } else {
+                // اضافه کردن محصول جدید
+                $cart->products()->attach($product->id, [
+                    'quantity' => $count,
+                    'price' => $total_price_for_product,
+                ]);
+            }
+
+
+            // آماده سازی خروجی محصولات
+            $items = $cart->products->map(function ($product)  {
+                $count = $product->pivot->quantity;
+                $total_price = $product->pivot->price;
+                $price = $product->price;
+                $discount = $product->activeOffer()['percent'];
+                if ($discount > 0) {
+                    $price = $price * ((100 - $discount) / 100);
+                }
+                return [
+                    "id" => $product->id,
+                    "faName" => $product->name,
+                    "url" => $product->url,
+                    "price" => (int) $price,
+                    "image" => $product->cover,
+                    "count" => $count,
+                    "totalPrice" => (int) $total_price,
+                    "ratio" => $product->ratio,
+                    "offer" => $discount,
+                    // "alertMessage" => $this->checkStockWarning($product, $count * $product->ratio),
+                ];
+            });
+
+            $cardCount = $items->count();
+            $cart->count = $cardCount;
+            $cart->save();
+            $itemsForOutput = $items->map(function ($i) {
+                return [
+                    'id' => $i['id'],
+                    'faName' => $i['faName'],
+                    'url' => $i['url'],
+                    'price' => (string) number_format($i['price']),
+                    'image' => $i['image'],
+                    'count' => (int) $i['count'],
+                    'totalPrice' => (string) number_format($i['totalPrice']),
+                    'ratio' => $i['ratio'],
+                    'offer' => $i['offer'],
+                    // 'alertMessage' => $i['alertMessage'],
+                ];
+            })->values();
+
+
         }
-        $user_id = auth()->user()->id;
-        $cart = Cart::firstOrCreate(
-            ['user_id' => $user_id],
-            ['count' => 0, 'total_price' => 0]
-        );
-        $ratio = $product->ratio;
         
-        $total_price_for_product = $count * $product->price * $ratio;
-
-        // بررسی اگر محصول قبلاً در سبد بود
-        $existingProduct = $cart->products()->find($product->id);
-
-        if ($existingProduct) {
-            // update pivot
-            $cart->products()->updateExistingPivot($product->id, [
-                'quantity' => $count,
-                'price' => $total_price_for_product,
-            ]);
-        } else {
-            // اضافه کردن محصول جدید
-            $cart->products()->attach($product->id, [
-                'quantity' => $count,
-                'price' => $total_price_for_product,
-            ]);
-        }
+        
+        
+        
 
         // محاسبه count و total_price کل سبد
         $cartData = $cart->products()->get()->reduce(function ($carry, $item) {
@@ -127,42 +184,7 @@ class CartController extends Controller
         $cart->total_price = $cartData['total_price'];
         $cart->save();
 
-        // آماده سازی خروجی محصولات
-        $items = $cart->products->map(function ($product) {
-            $count = $product->pivot->quantity;
-            $price = $product->pivot->price;
-            return [
-                "id" => $product->id,
-                "faName" => $product->name,
-                "url" => $product->url,
-                "price" => (int) $product->price,
-                "image" => $product->cover,
-                "count" => $count,
-                "totalPrice" => (int) $price,
-                "ratio" => $product->ratio,
-                "offer" => $product->discount ?? 0,
-                // "alertMessage" => $this->checkStockWarning($product, $count * $product->ratio),
-            ];
-        });
-
-        $cardCount = $items->count();
-        $cart->count = $cardCount;
-        $cart->save();
-        $itemsForOutput = $items->map(function ($i) {
-            return [
-                'id' => $i['id'],
-                'faName' => $i['faName'],
-                'url' => $i['url'],
-                'price' => (string) number_format($i['price']),
-                'image' => $i['image'],
-                'count' => (int) $i['count'],
-                'totalPrice' => (string) number_format($i['totalPrice']),
-                'ratio' => $i['ratio'],
-                'offer' => $i['offer'],
-                // 'alertMessage' => $i['alertMessage'],
-            ];
-        })->values();
-
+        
         $amount = number_format($cart->total_price);
 
         return response()->json([
