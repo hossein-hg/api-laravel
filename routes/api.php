@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CartController;
 use App\Http\Controllers\Admin\ProductsController;
 use App\Http\Controllers\HomeController;
 use App\Models\Admin\Product;
+use App\Models\Admin\Offer;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -58,6 +59,9 @@ Route::get('roles',function(){
 
 Route::get('test',function(){
     $now = strtotime('2025-11-16');
+    $offer = Offer::find(6);
+    
+    dd(strtotime($offer->end_time));
     $product = Product::findOrFail(6);
     $threeDaysLater = $now + (3 * 24 * 60 * 60); // 3 روز * 24 ساعت * 60 دقیقه * 60 ثانیه
 

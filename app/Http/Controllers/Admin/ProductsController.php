@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 
 class ProductsController extends Controller
 {
-    public function index(){
+    public function index(Request $request){
 
         // $svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
         //     <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
@@ -41,11 +41,72 @@ class ProductsController extends Controller
 
 
 
-        $products = Product::with('category','images','group','options','comments','colors','warranties','sizes','brands')  // eager load relations
-            ->paginate(perPage: 2);
+        $query = Product::with('images','group','options','comments','colors','warranties','sizes','brands')  // eager load relations
+            ;
         // $product = Product::find(6);
         // dd($product->colors);
+
+        if ($request->filled('filterCategory')) {
+            $categories = explode(',', $request->filterCategory);
+
+            $query->whereHas('group', function ($q) use ($categories) {
+                $q->whereIn('name', $categories);
+            });
+        }
+
+        // فیلتر بر اساس قیمت حداکثر
+        if ($request->filled('filterMaxPrice')) {
+            $maxPrice = (int) $request->input('filterMaxPrice');
+            $query->where('price', '<=', $maxPrice);
+        }
+
+        if ($request->filled('filterMinPrice')) {
+            $minPrice = (int) $request->input('filterMinPrice');
+            $query->where('price', '>=', $minPrice);
+        }
+
+        if ($request->filled('filterInventory')) {
+            $inventory = (int) $request->input('filterInventory');
+            $query->where('inventory', '>=', $inventory);
+        }
+
+        if ($request->filled('filterBrand')) {
+            $brands = explode(',', $request->filterBrand);
+
+            $query->whereHas('brands', function ($q) use ($brands) {
+                $q->whereIn('name', $brands);
+            });
+        }
+
+        if ($request->filled('sort')) {
+            switch ($request->sort) {
+                case 'latest':
+                    $query->orderBy('id', 'desc'); // جدیدترین
+                    break;
+                case 'max_price':
+                    $query->orderBy('price', 'desc'); // قیمت صعودی
+                    break;
+                case 'min_price':
+                    $query->orderBy('price', 'asc'); // قیمت نزولی
+                    break;
+                case 'best_seller':
+                    $query->orderBy('salesCount', 'asc'); //  
+                    break;
+                case 'highest_score':
+                    $query->orderBy('id', 'desc'); // قیمت نزولی
+                    break;
+                default:
+                    $query->latest(); // پیش‌فرض: جدیدترین
+            }
+        } else {
+            $query->latest(); // پیش‌فرض
+        }
+
+        // pagination
+        $products = $query->paginate(perPage: 1);
+
         return new ProductCollection($products);
+        
     }
 
 

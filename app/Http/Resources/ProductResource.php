@@ -17,15 +17,19 @@ class ProductResource extends JsonResource
     public static $wrap = null;
     public function toArray(Request $request): array
     {
-        $price = (int)$this->price;
+        $price = (int) $this->price;
+        $price = $this->activeOffer()['percent'] > 0 ? $price * ((100 - $this->activeOffer()['percent']) / 100) : $price;
+        $oldPrice = $this->activeOffer()['percent'] > 0 ? $this->price : 0;
+
+
         $price = (string) number_format($price);
 
-        $oldPrice = (int) $this->oldPrice;
+       
         $oldPrice = (string) number_format($oldPrice);
         
         return [
             'id' => $this->id,
-            'name' => $this->name,
+            'name' => trim($this->name),
             'price' => $price,
             'oldPrice' => $oldPrice,
             'cover' => $this->cover,
@@ -34,7 +38,7 @@ class ProductResource extends JsonResource
             'shortDescription' => $this->shortDescription,
             'description' => $this->description,  
             'salesCount'=> $this->salesCount,
-            'countDown'=> $this->countdown,
+            'countDown' => $this->activeOffer()['countDown'],
             'warehouseInventory'=> $this->warehouseInventory,
             'satisfaction'=> $this->satisfaction,
             'additionalInformation'=> $this->additionalInformation,
@@ -42,7 +46,7 @@ class ProductResource extends JsonResource
             'categoryName' =>  $this->group->name,
             'categoryPath' =>$this->group->url,
             'stars'=>$this->stars,
-            'discount'=>$this->activeOffer(),
+            'discount' => $this->activeOffer()['percent'],
             'tags' => $this->tags,
             'features' => $this->filtersWithSelectedOptions(),
             'ratio'=>$this->ratio,

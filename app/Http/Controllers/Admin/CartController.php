@@ -13,7 +13,10 @@ class CartController extends Controller
         if (!$cart) {
             return response()->json([
                 'data' => [],
-                'message' => 'سبد خرید خالی است'
+                'message' => 'سبد خرید خالی است',
+                'statusCode' => 200,
+                'success' => true,
+                'errors' => null
             ]);
         }
 
@@ -57,12 +60,16 @@ class CartController extends Controller
         return response()->json([
             'data' => [
                 [
-                    'cardCount' => $cardCount,
+                    'cartCount' => $cardCount,
                     'amount' => (string) $amount,
                     'postPay' => "120,000",
                     'items' => $itemsForOutput
                 ]
-            ]
+                ],
+            'statusCode' => 200,
+            'success' => true,
+            'message' => 'تمام ایتم های سبدخرید',
+            'errors' => null
         ]);
          
     }
@@ -161,12 +168,16 @@ class CartController extends Controller
         return response()->json([
             'data' => [
                 [
-                    'cardCount' => $cardCount,
+                    'cartCount' => $cardCount,
                     'amount' => (string) $amount,
                     'postPay' => "120,000",
                     'items' => $itemsForOutput
                 ]
-            ]
+                ],
+            'message' => 'محصول اضافه شد',
+            'statusCode' => 200,
+            'success' => true,
+            'errors' => null
         ]);
     }
     private function checkStockWarning($product, $count)
@@ -189,7 +200,7 @@ class CartController extends Controller
         $user_id = auth()->user()->id;
         $cart = Cart::where("user_id", $user_id)->first();
         $cartProducts = $cart->products;
-        if ($cartProducts->count() < 0) {
+        if ($cartProducts->count() == 0) {
             $cart->delete();
             return response()->json([
                 'data' => null,
@@ -266,12 +277,16 @@ class CartController extends Controller
         return response()->json([
             'data' => [
                 [
-                    'cardCount' => $cardCount,
+                    'cartCount' => $cardCount,
                     'amount' => (string) $amount,
                     'postPay' => "120,000",
                     'items' => $itemsForOutput
                 ]
-            ]
+                ],
+              'message' => 'محصول حذف شد',
+                'statusCode' => 200,
+                'success' => true,
+                'errors' => null
         ]);
 
 

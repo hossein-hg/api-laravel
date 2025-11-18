@@ -114,17 +114,29 @@ class Product extends Model
 
     public function activeOffer(){
         $offer = $this->offer;
+        
         if ($offer) {
             $startTime = Carbon::parse($offer->start_time);  
             $endTime = Carbon::parse($offer->end_time);  
             $now = Carbon::now();
             
-           if ($startTime < $now && $now < $endTime) {  // یا $givenTime < $now
-                return $offer->percent;
+           if ($startTime < $now && $now < $endTime) {
+                $countDown = strtotime($offer->end_time) * 1000;
+                    return [
+                        'percent'=>$offer->percent,
+                        'countDown'=> $countDown
+                    ]; 
+                
                 }
-            return 0;            
-        }
-        return 0;
+                return [
+                        'percent'=>0,
+                        'countDown'=> 0
+                        ] ;            
+            }
+            return [
+                        'percent'=>0,
+                        'countDown'=> 0
+                        ] ;
     }
 
     public function warranties()
