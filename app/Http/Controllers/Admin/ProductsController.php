@@ -41,10 +41,8 @@ class ProductsController extends Controller
 
 
 
-        $query = Product::with('images','group','options','comments','colors','warranties','sizes','brands')  // eager load relations
-            ;
-        // $product = Product::find(6);
-        // dd($product->colors);
+        $query = Product::with('images','group','options','comments','colors','warranties','sizes','brands');
+     
 
        
         if ($request->filled('search') && strlen($request->input('search')) >= 3) {
@@ -75,7 +73,6 @@ class ProductsController extends Controller
             });
         }
 
-        // فیلتر بر اساس قیمت حداکثر
         if ($request->filled('filterMaxPrice')) {
             $maxPrice = (int) $request->input('filterMaxPrice');
             $query->where('price', '<=', $maxPrice);
@@ -124,7 +121,7 @@ class ProductsController extends Controller
         }
 
         // pagination
-        $products = $query->paginate(perPage: 3);
+        $products = $query->paginate(perPage: 6);
 
         return new ProductCollection($products);
         

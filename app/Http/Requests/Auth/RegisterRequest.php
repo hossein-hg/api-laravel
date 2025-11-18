@@ -24,8 +24,8 @@ class RegisterRequest extends FormRequest
     {
         return [
             'name' => 'required|string',
-            'phone' => 'required|string|unique:users',
-            'gender' => 'required|in:0,1,2'
+            'phone' => 'required|string|unique:users|regex:/^09[0-9]{9}$/',
+            'gender' => 'required|in:0,1,2',
         ];
     }
 
@@ -49,6 +49,8 @@ class RegisterRequest extends FormRequest
             'gender.required' => 'جنسیت  الزامی است.', 
             'name.string' => 'نام باید رشته باشد.',
             'gender.in' => 'جنسیت باید مرد، زن یا سایر باشد.',
+            'phone.regex' => 'فرمت شماره اشتباه است.',
+
         ];
     }
 }

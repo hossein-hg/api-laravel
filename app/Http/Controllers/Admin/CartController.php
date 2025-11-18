@@ -12,11 +12,11 @@ class CartController extends Controller
         $cart = Cart::where("user_id", auth()->user()->id)->first();
         if (!$cart) {
             return response()->json([
-                'data' => [],
+                'data' => null,
                 'message' => 'سبد خرید خالی است',
                 'statusCode' => 200,
                 'success' => true,
-                'errors' => null
+                'errors' => null,
             ]);
         }
 
@@ -77,7 +77,6 @@ class CartController extends Controller
     public function update(Request $request)
     {
         
-       
         foreach ($request->all() as $key => $request) {
             
                 $count = $request['count'];
@@ -106,18 +105,15 @@ class CartController extends Controller
             $ratio = $product->ratio;
 
             $total_price_for_product = $count * $price * $ratio;
-            // dd($total_price_for_product,$count,$price,$ratio);
-            // بررسی اگر محصول قبلاً در سبد بود
+
             $existingProduct = $cart->products()->find($product->id);
 
             if ($existingProduct) {
-                // update pivot
                 $cart->products()->updateExistingPivot($product->id, [
                     'quantity' => $count,
                     'price' => $total_price_for_product,
                 ]);
             } else {
-                // اضافه کردن محصول جدید
                 $cart->products()->attach($product->id, [
                     'quantity' => $count,
                     'price' => $total_price_for_product,

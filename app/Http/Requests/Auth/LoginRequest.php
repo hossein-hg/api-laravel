@@ -26,26 +26,26 @@ class LoginRequest extends FormRequest
     {
         return [
                 
-                'phone' => 'required|string|max:11',
+                'phone' => 'required|string|regex:/^09[0-9]{9}$/',
         ];
     }
 
     protected function failedValidation(Validator $validator)
     {
         throw new HttpResponseException(response()->json([
-            'success' => false,  // فیلد custom
-            'message' => ' خطا اعتبارسنجی!',  // پیام custom
-            'statusCode' => 422,  // اضافه کردن کد وضعیت
-            'errors' => $validator->errors(),  // errors اصلی رو نگه دار
-            'data' => null  // اگر بخوای data خالی اضافه کنی
+            'success' => false, 
+            'message' => ' خطا اعتبارسنجی!',
+            'statusCode' => 422,  
+            'errors' => $validator->errors(),
+            'data' => null 
         ], 422));
     }
 
     public function messages(): array
     {
         return [
-            'phone.required' => 'شماره تلفن  الزامی است.',  // فارسی یا هر زبانی
-           
+            'phone.required' => 'شماره تلفن  الزامی است.',
+            'phone.regex' => 'فرمت شماره اشتباه است.',            
         ];
     }
 }
