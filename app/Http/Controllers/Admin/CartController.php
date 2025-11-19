@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 use App\Models\Admin\Product;
 use App\Http\Controllers\Controller;
+use DB;
 use Illuminate\Http\Request;
 use App\Models\Admin\Cart;
 class CartController extends Controller
@@ -28,11 +29,11 @@ class CartController extends Controller
                 "faName" => $product->name,
                 "url" => $product->url,
                 "price" => (int) $product->price,
-                "image" => $product->cover,
+                "cover" => $product->cover,
                 "count" => $count,
                 "totalPrice" => (int) $price,
                 "ratio" => $product->ratio,
-                "offer" => $product->discount ?? 0,
+                "discount" => $product->discount ?? 0,
                 // "alertMessage" => $this->checkStockWarning($product, $count * $product->ratio),
             ];
         });
@@ -46,11 +47,11 @@ class CartController extends Controller
                 'faName' => $i['faName'],
                 'url' => $i['url'],
                 'price' => (string) number_format($i['price']),
-                'image' => $i['image'],
+                'cover' => $i['cover'],
                 'count' => (int) $i['count'],
                 'totalPrice' => (string) number_format($i['totalPrice']),
                 'ratio' => $i['ratio'],
-                'offer' => $i['offer'],
+                'discount' => $i['discount'],
                 // 'alertMessage' => $i['alertMessage'],
             ];
         })->values();
@@ -58,14 +59,14 @@ class CartController extends Controller
         $amount = number_format($cart->total_price);
 
         return response()->json([
-            'data' => [
+            'data' => 
                 [
                     'cartCount' => $cardCount,
                     'amount' => (string) $amount,
                     'postPay' => "120,000",
                     'items' => $itemsForOutput
                 ]
-                ],
+                ,
             'statusCode' => 200,
             'success' => true,
             'message' => 'تمام ایتم های سبدخرید',
@@ -78,7 +79,7 @@ class CartController extends Controller
     {
         
         foreach ($request->all() as $key => $request) {
-            
+                $inventory = true;
                 $count = $request['count'];
            
                 $product = Product::findOrFail($request['id']);
@@ -88,42 +89,61 @@ class CartController extends Controller
                      $price = $price * ((100 - $discount)/100);
                 }
                 if ($product->warehouseInventory < ($count * $product->ratio)) {
-
-                return response()->json([
-                    'data' => null,
-                    'statusCode' => 401,
-                    'success' => true,
-                    'message' => 'تعداد انتخاب شده بیشتر از موجودی انبار است',
-                    'errors' => null
-                ]);
+                    $inventory = false;
+                    // return response()->json([
+                    //     'data' => null,
+                    //     'statusCode' => 401,
+                    //     'success' => true,
+                    //     'message' => 'تعداد انتخاب شده بیشتر از موجودی انبار است',
+                    //     'errors' => null
+                    // ]);
             }
             $user_id = auth()->user()->id;
             $cart = Cart::firstOrCreate(
                 ['user_id' => $user_id],
                 ['count' => 0, 'total_price' => 0]
             );
-            $ratio = $product->ratio;
-
-            $total_price_for_product = $count * $price * $ratio;
-
             $existingProduct = $cart->products()->find($product->id);
+            if ($inventory){
+                
+                
+                $ratio = $product->ratio;
 
-            if ($existingProduct) {
-                $cart->products()->updateExistingPivot($product->id, [
-                    'quantity' => $count,
-                    'price' => $total_price_for_product,
-                ]);
-            } else {
-                $cart->products()->attach($product->id, [
-                    'quantity' => $count,
-                    'price' => $total_price_for_product,
-                ]);
+                $total_price_for_product = $count * $price * $ratio;
+
+               
+
+                if ($existingProduct) {
+                    $cart->products()->updateExistingPivot($product->id, [
+                        'quantity' => $count,
+                        'price' => $total_price_for_product,                       
+                    ]);
+                } else {
+                    $cart->products()->attach($product->id, [
+                        'quantity' => $count,
+                        'price' => $total_price_for_product,
+                    ]);
+                }
+
             }
-
-
+            else{
+                if (!$existingProduct) {
+                    $cart->products()->attach($product->id, [
+                        'quantity' => 0,
+                        'price' => 0,
+                        'inventory'=> 0   
+                    ]);
+                }
+                else{
+                    $cart->products()->updateExistingPivot($product->id, [
+                        'inventory' => 0
+                    ]);
+                }
+            }
             // آماده سازی خروجی محصولات
             $items = $cart->products->map(function ($product)  {
                 $count = $product->pivot->quantity;
+                $inventory = $product->pivot->inventory;
                 $total_price = $product->pivot->price;
                 $price = $product->price;
                 $discount = $product->activeOffer()['percent'];
@@ -135,16 +155,18 @@ class CartController extends Controller
                     "faName" => $product->name,
                     "url" => $product->url,
                     "price" => (int) $price,
-                    "image" => $product->cover,
+                    "cover" => $product->cover,
                     "count" => $count,
                     "totalPrice" => (int) $total_price,
                     "ratio" => $product->ratio,
-                    "offer" => $discount,
-                    // "alertMessage" => $this->checkStockWarning($product, $count * $product->ratio),
+                    "discount" => $discount,
+                    "inventory" => $inventory,
+                    "alertMessage" => $inventory == 0 ? 'تعداد انتخابی بیشتر از تعداد موجود است':'',
                 ];
             });
-
-            $cardCount = $items->count();
+           
+            
+            $cardCount = $items->where('inventory','>',0)->where('count','<>',0)->count();
             $cart->count = $cardCount;
             $cart->save();
             $itemsForOutput = $items->map(function ($i) {
@@ -153,15 +175,18 @@ class CartController extends Controller
                     'faName' => $i['faName'],
                     'url' => $i['url'],
                     'price' => (string) number_format($i['price']),
-                    'image' => $i['image'],
+                    'cover' => $i['cover'],
                     'count' => (int) $i['count'],
                     'totalPrice' => (string) number_format($i['totalPrice']),
                     'ratio' => $i['ratio'],
-                    'offer' => $i['offer'],
-                    // 'alertMessage' => $i['alertMessage'],
+                    'discount' => $i['discount'],
+                    'inventory' => $i['inventory'],
+                    'alertMessage' => $i['alertMessage'],
                 ];
             })->values();
-
+            // DB::table('cart_product')->where('product_id', $product->id)->update([
+            //     'inventory' => 1
+            // ]);
 
         }
         
@@ -179,19 +204,24 @@ class CartController extends Controller
         // $cart->count = $cartData['count'];
         $cart->total_price = $cartData['total_price'];
         $cart->save();
-
-        
         $amount = number_format($cart->total_price);
 
+        DB::table('cart_product')->where('quantity', 0)->where('inventory',0)->delete();
+        DB::table('cart_product')->where('quantity', '<>',0)->update([
+            'inventory'=>1
+        ]);
+        $countCart = DB::table('cart_product')->where('cart_id', $cart->id)->count();
+        $cart->count = $countCart;
+        $cart->save();
         return response()->json([
-            'data' => [
+            'data' => 
                 [
                     'cartCount' => $cardCount,
                     'amount' => (string) $amount,
                     'postPay' => "120,000",
                     'items' => $itemsForOutput
                 ]
-                ],
+                ,
             'message' => 'محصول اضافه شد',
             'statusCode' => 200,
             'success' => true,
@@ -262,11 +292,11 @@ class CartController extends Controller
                 "faName" => $product->name,
                 "url" => $product->url,
                 "price" => (int) $product->price,
-                "image" => $product->cover,
+                "cover" => $product->cover,
                 "count" => $count,
                 "totalPrice" => (int) $price,
                 "ratio" => $product->ratio,
-                "offer" => $product->discount ?? 0,
+                "discount" => $product->discount ?? 0,
                 // "alertMessage" => $this->checkStockWarning($product, $count * $product->ratio),
             ];
         });
@@ -281,11 +311,11 @@ class CartController extends Controller
                 'faName' => $i['faName'],
                 'url' => $i['url'],
                 'price' => (string) number_format($i['price']),
-                'image' => $i['image'],
+                'cover' => $i['cover'],
                 'count' => (int) $i['count'],
                 'totalPrice' => (string) number_format($i['totalPrice']),
                 'ratio' => $i['ratio'],
-                'offer' => $i['offer'],
+                'discount' => $i['discount'],
                 // 'alertMessage' => $i['alertMessage'],
             ];
         })->values();
@@ -293,14 +323,14 @@ class CartController extends Controller
         $amount = number_format($cart->total_price);
 
         return response()->json([
-            'data' => [
+            'data' => 
                 [
                     'cartCount' => $cardCount,
                     'amount' => (string) $amount,
                     'postPay' => "120,000",
                     'items' => $itemsForOutput
                 ]
-                ],
+                ,
               'message' => 'محصول حذف شد',
                 'statusCode' => 200,
                 'success' => true,

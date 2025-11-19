@@ -58,10 +58,12 @@ class ProductsController extends Controller
                 $q->whereHas('group', function ($q2) use ($search) {
                     $q2->where('name', 'like', "%{$search}%");
                 })
-                    ->orWhereHas('brands', function ($q2) use ($search) {
+                ->orWhereHas('brands', function ($q2) use ($search) {
                         $q2->where('name', 'like', "%{$search}%");
-                    });
+                });
             });
+
+           
         }
 
 
@@ -121,7 +123,7 @@ class ProductsController extends Controller
         }
 
         // pagination
-        $products = $query->paginate(perPage: 6);
+        $products = $query->paginate(perPage: 2);
 
         return new ProductCollection($products);
         
