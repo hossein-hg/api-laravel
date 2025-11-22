@@ -41,6 +41,10 @@ return [
             'journal_mode' => null,
             'synchronous' => null,
             'transaction_mode' => 'DEFERRED',
+            'options' => [
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+03:30'",
+
+            ],
         ],
 
         'mysql' => [

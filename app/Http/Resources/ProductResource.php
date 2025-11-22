@@ -40,7 +40,7 @@ class ProductResource extends JsonResource
             'salesCount'=> $this->salesCount,
             'countDown' => $this->activeOffer()['countDown'],
             'warehouseInventory'=> $this->warehouseInventory,
-            'satisfaction'=> $this->satisfaction,
+            'satisfaction' => (int) $this->satisfaction,
             'additionalInformation'=> $this->additionalInformation,
             'images' => $this->images->pluck('path'), 
             'categoryName' =>  trim($this->group->name),

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Admin\Address;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -54,8 +55,16 @@ class User extends Authenticatable implements JWTSubject
         return $this->getKey();
     }
 
+   
     public function getJWTCustomClaims()
     {
-        return [];
+        return [
+            'role' => $this->getRoleNames()->first() ?? 'user',  // role اول (یا پیش‌فرض 'user')
+            // می‌تونی claims دیگه‌ای مثل 'permissions' یا 'email_verified' هم اضافه کنی
+        ];
+    }
+
+    public function addresses(){
+        return $this->hasMany(Address::class);
     }
 }

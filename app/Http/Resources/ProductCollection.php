@@ -2,6 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Admin\Brand;
+use App\Models\Admin\Category;
+use App\Models\Admin\Group;
+use App\Models\Admin\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
@@ -14,15 +18,24 @@ class ProductCollection extends ResourceCollection
      */
     public function toArray(Request $request): array
     {
+        $minPrice = Product::min('price');
+        $maxPrice = Product::max('price');
+
         return [
             'data' => [
                 'results'=> ProductListResource::collection($this->collection),
-                'hasPrevPage' => !$this->onFirstPage(),  // true اگر صفحه قبلی وجود داشته باشه
-                'hasNextPage' => $this->hasMorePages(),  // true اگر صفحه بعدی وجود داشته باشه
-                'page' => $this->currentPage(),  // current page (duplicate با current_page؟ اگر نه، تغییر بده)
-                'total_page' => $this->lastPage(),  // کل صفحات
-                'current_page' => $this->currentPage(),  // صفحه فعلی
-                'total_products' => $this->total(),  // کل محصولات
+                'hasPrevPage' => !$this->onFirstPage(), 
+                'hasNextPage' => $this->hasMorePages(), 
+                'page' => $this->currentPage(), 
+                'total_page' => $this->lastPage(), 
+                'current_page' => $this->currentPage(),
+                'total_products' => $this->total(), 
+                'categories'=> CategoryResource::collection(Group::all()),
+                'price'=> [
+                    'min_price'=> (int)$minPrice,
+                    'max_price'=> (int)$maxPrice,
+                ],
+                'brands'=> BrandResource::collection(Brand::all()),
             ],
             'statusCode' => 200,
             'message' => 'موفقیت آمیز',

@@ -100,11 +100,12 @@ class AuthController extends Controller
                 ], 401);
             }
             
-            $roles = $user->getRoleNames();
+           
 
            
             unset($user->roles);
-            $user->roles = $roles;
+          
+           
             return response()->json([
                 'data' => [
                     'user' => $user  
@@ -196,6 +197,10 @@ class AuthController extends Controller
 
 
 
+        $role = $user->getRoleNames()->first() ?? 'user';
+        unset($user->roles);
+        $user->role = $role ?? 'user';
+
 
        
 
@@ -209,6 +214,7 @@ class AuthController extends Controller
             'data'=>[
                 'user' => $user,
                 'token' => $token
+
             ],
             'statusCode'=> 200,
             'message'=> 'موفقیت آمیز',

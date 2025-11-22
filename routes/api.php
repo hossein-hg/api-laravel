@@ -36,6 +36,10 @@ Route::middleware('auth:api')->group(function () {
     Route::post('cart/remove', [CartController::class, 'remove']);
 
     Route::get('order/add-from-cart', [OrderController::class, 'addFromCart']);
+    Route::get('orders', [OrderController::class, 'index']);
+    Route::get('order/details/{order}', [OrderController::class, 'show']);
+
+
 
 });
 
@@ -61,18 +65,21 @@ Route::get('roles',function(){
 
 
 Route::get('test',function(){
-    $now = strtotime('2025-11-16');
-    $offer = Offer::find(6);
+    // $now = strtotime('2025-11-16');
+    // $offer = Offer::find(6);
     
-    dd(strtotime($offer->end_time));
-    $product = Product::findOrFail(6);
-    $threeDaysLater = $now + (3 * 24 * 60 * 60); // 3 روز * 24 ساعت * 60 دقیقه * 60 ثانیه
+    // dd(strtotime($offer->end_time));
+    // $product = Product::findOrFail(6);
+    // $threeDaysLater = $now + (3 * 24 * 60 * 60); // 3 روز * 24 ساعت * 60 دقیقه * 60 ثانیه
 
-    // تبدیل به میلی‌ثانیه
-    $milliseconds = $threeDaysLater * 1000;
-    // $product->tags = ['سامسونگ', 'ال‌جی'];
-    // $product->save();
-    return $milliseconds;
+    // // تبدیل به میلی‌ثانیه
+    // $milliseconds = $threeDaysLater * 1000;
+    // // $product->tags = ['سامسونگ', 'ال‌جی'];
+    // // $product->save();
+    // return $milliseconds;
+
+    $user = User::findOrFail(17);
+    $user->assignRole('expert-sale');
     
 });
 

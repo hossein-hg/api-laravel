@@ -123,6 +123,8 @@ class ProductsController extends Controller
         $products = $query->paginate(perPage: 2);
 
         return new ProductCollection($products);
+
+        
         
     }
 

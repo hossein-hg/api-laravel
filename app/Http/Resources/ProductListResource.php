@@ -38,7 +38,7 @@ class ProductListResource extends JsonResource
             'salesCount' => $this->salesCount,
             'countDown' => $this->activeOffer()['countDown'],
             'warehouseInventory' => $this->warehouseInventory,
-            'satisfaction' => $this->satisfaction,
+            'satisfaction' => (int)$this->satisfaction,
             'additionalInformation' => trim($this->additionalInformation),
             'images' => $this->whenLoaded('images', fn() => $this->images->pluck('path')),
             'categoryName' => $this->whenLoaded('group', fn() => trim($this->group->name)),
