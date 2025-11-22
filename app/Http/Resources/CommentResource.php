@@ -16,8 +16,11 @@ class CommentResource extends JsonResource
     {
         return [
             // 'product_name' => $this->name,
+
             'image' => 'https://files.epyc.ir/images/avatar.jpg',
-            'link' => $this->link,
+            'name' => $this->whenLoaded('user', fn() => trim($this->user->name)),
+            'stars' => 5,
+            'content'=>$this->body,
         ];
     }
 }

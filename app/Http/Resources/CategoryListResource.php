@@ -16,7 +16,7 @@ class CategoryListResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'title' => $this->name,
+            'title' => trim($this->name),
             'subTitle' => $this ->products()->count(),
             'image'=> $this->image,
         ];

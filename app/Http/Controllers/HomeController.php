@@ -19,15 +19,20 @@ class HomeController extends Controller
     public function index(){
         $latest_products = Product::with('category', 'images', 'group', 'options', 'comments', 'colors', 'warranties', 'sizes', 'brands')
             ->orderBy('id', 'desc')
-            ->take(2)
+            ->take(6)
             ->get();
+
+        $best_products = Product::with('category', 'images', 'group', 'options', 'comments', 'colors', 'warranties', 'sizes', 'brands')
+            ->orderBy('id', 'desc')
+            ->take(6)
+            ->get();    
 
         $best_groups = Group::with('products')->orderBy('id','desc')->get();  
         $setting = Setting::find(1);
         $topBanners = Banner::where('type',1)->get();
         $banners = Banner::where('type',2)->get();
         $maxDiscount = Offer::where('start_time','<',Carbon::now())->where('end_time', '>', Carbon::now())->max('percent');
-        $comments = Comment::take(5)->get();
+        $comments = Comment::with('user')->take(5)->get();
         $products = Product::with('category', 'images', 'group', 'options', 'comments', 'colors', 'warranties', 'sizes', 'brands')->whereIn('group_id', [1, 2, 3, 4, 5])->limit(5)->get();
         $offer_products = Product::with('category', 'images', 'group', 'options', 'comments', 'colors', 'warranties', 'sizes', 'brands')
             ->whereHas('offer', function ($q) {
@@ -42,8 +47,22 @@ class HomeController extends Controller
             'data' => [
                 'latestProducts'=>[
                       "title"=>"آخرین  های محصولات",
-                      "subTitle"=>"لیست آخرین محولات جدید",
+                      'image' => 'https://files.epyc.ir/images/latest.jpg',
+                      "subTitle"=>"لیست آخرین محصولات جدید",
+                      'description'=> 'فرهنگ پیشرو در زبان فارسی ایجاد کرد، در این صورت می توان امید داشت که تمام و دشواری م',
                       'products' => ProductListResource::collection($latest_products)
+                ],
+                'popularProducts' => [
+                    "title" => "محبوب ترین محصولات",
+                    "subTitle" => "لیست محبوب ترین محصولات جدید",
+                    'products' => ProductListResource::collection($latest_products)
+                ],
+                'top_rated_products' => [
+                    "title" => "برترین محصولات",
+                    "subTitle" => "لیست آخرین محصولات جدید",
+                    'image' => 'https://files.epyc.ir/images/latest.jpg',
+                    'description' => 'فرهنگ پیشرو در زبان فارسی ایجاد کرد، در این صورت می توان امید داشت که تمام و دشواری م',
+                    'products' => ProductListResource::collection($latest_products)
                 ],
                 'categoryList' => [
                     "title"=> "برترین دسته بندی ها",
@@ -59,16 +78,38 @@ class HomeController extends Controller
                         'title'=> 'اولین های در ایران زمین',
                         'subTitle'=> 'تخفیف ویژه برای شما',
                         'discount'=> 'تا '.$maxDiscount.' درصد تخفیف',
-                        'product'=> ProductListResource::collection($offer_products),
+                        'products'=> ProductListResource::collection($products),
+
+                ],
+                'bestOfferProducts' => [
+                    
+                    'title' => 'آخرین محصولات تخفیف دار',
+                    'subTitle' => 'لیست آخرین محصولات جدید',
+                    'products' => ProductListResource::collection($products),
 
                 ],
                 'testimonials' => [
                         "title"=>"دیدگاه خریداران",
-                        "subTitle"=>"لیست دسته بندی ها",
+                        "subTitle"=>"این المان برای نمایش دیدگاه خریداران یا کاربران معمولی سایت است و شما میتوانید هرچیزی درون ان بنویسید و استفاده کنید . این المان اختصاصی قالب فروشگاهی مهرنوش است و به هیچ درون ان بنویسید و استفاده کنید . این المان اختصاصی قالب فروشگاهی مهرنوش است و به هیچ",
                         'comments' => CommentResource::collection($comments),
 
                 ],
-                'productList' => ProductListResource::collection($products),
+                'productList' => [
+                     "title"=>"انواع محصولات",
+                    "subTitle"=>"از هر نوع برند",
+                    "description"=>"فرهنگ پیشرو در زبان فارسی ایجاد کرد، در این صورت می توان امید داشت که تمام و دشواری موج",
+                    'products'=> ProductListResource::collection($products),
+                ],
+
+                'bestProduct' => [
+                    "title" => "بهترین محصولات ما",
+                    "subTitle" => "فقط امروز تخفیف داریم",
+                     "discount_description"=> "تا ۹۰ درصد تفیف ویژه",
+                     'image'=> 'https://files.epyc.ir/images/best.png',
+                    'products' => ProductListResource::collection($best_products),
+                ],
+                
+                
             ],
             'statusCode' => 200,
             'message' => 'موفقیت آمیز',

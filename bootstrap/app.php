@@ -20,7 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (AuthenticationException $e, Request $request) {
-            if ($request->expectsJson()) {  // فقط برای API requests (با Accept: application/json)
+            if ($request->expectsJson()) { 
                 return response()->json([
                     'data' => null,
                     'statusCode' => 401,

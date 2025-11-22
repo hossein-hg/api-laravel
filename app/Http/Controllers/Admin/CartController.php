@@ -24,6 +24,8 @@ class CartController extends Controller
         $items = $cart->products->map(function ($product) {
             $count = $product->pivot->quantity;
             $price = $product->pivot->price;
+            $color = $product->pivot->color;
+            $size = $product->pivot->size;
             return [
                 "id" => $product->id,
                 "faName" => $product->name,
@@ -33,8 +35,9 @@ class CartController extends Controller
                 "count" => $count,
                 "totalPrice" => (int) $price,
                 "ratio" => $product->ratio,
+                "color" => $color ?? null,
+                "size" => $size ?? null,
                 "discount" => $product->discount ?? 0,
-                // "alertMessage" => $this->checkStockWarning($product, $count * $product->ratio),
             ];
         });
 
@@ -51,6 +54,8 @@ class CartController extends Controller
                 'count' => (int) $i['count'],
                 'totalPrice' => (string) number_format($i['totalPrice']),
                 'ratio' => $i['ratio'],
+                'color' => $i['color'],
+                'size' => $i['size'],
                 'discount' => $i['discount'],
                 // 'alertMessage' => $i['alertMessage'],
             ];
@@ -61,6 +66,7 @@ class CartController extends Controller
         return response()->json([
             'data' => 
                 [
+                    'id' => $cart->id,
                     'cartCount' => $cardCount,
                     'amount' => (string) $amount,
                     'postPay' => "120,000",
@@ -77,8 +83,15 @@ class CartController extends Controller
 
     public function update(Request $request)
     {
-        
+       
         foreach ($request->all() as $key => $request) {
+                $all_request[] = [
+                    'id'=> $request['id'],
+                    'count'=> $request['count'],
+                ];
+               
+                $color = $request['color'] ?? null;
+                $size = $request['size'] ?? null;
                 $inventory = true;
                 $count = $request['count'];
            
@@ -90,109 +103,127 @@ class CartController extends Controller
                 }
                 if ($product->warehouseInventory < ($count * $product->ratio)) {
                     $inventory = false;
-                    // return response()->json([
-                    //     'data' => null,
-                    //     'statusCode' => 401,
-                    //     'success' => true,
-                    //     'message' => 'تعداد انتخاب شده بیشتر از موجودی انبار است',
-                    //     'errors' => null
-                    // ]);
+                   
             }
             $user_id = auth()->user()->id;
             $cart = Cart::firstOrCreate(
                 ['user_id' => $user_id],
                 ['count' => 0, 'total_price' => 0]
             );
+            $ratio = $product->ratio;
             $existingProduct = $cart->products()->find($product->id);
             if ($inventory){
-                
-                
-                $ratio = $product->ratio;
-
                 $total_price_for_product = $count * $price * $ratio;
-
-               
 
                 if ($existingProduct) {
                     $cart->products()->updateExistingPivot($product->id, [
                         'quantity' => $count,
-                        'price' => $total_price_for_product,                       
+                        'price' => $total_price_for_product, 
+                        'color'=> $color ?? null,                      
+                        'size'=> $size ?? null,                      
                     ]);
                 } else {
                     $cart->products()->attach($product->id, [
                         'quantity' => $count,
                         'price' => $total_price_for_product,
+                        'color' => $color ?? null,
+                        'size' => $size ?? null,
+
                     ]);
                 }
 
             }
             else{
-                if (!$existingProduct) {
-                    $cart->products()->attach($product->id, [
-                        'quantity' => 0,
-                        'price' => 0,
-                        'inventory'=> 0   
+                if ($existingProduct) {
+                    
+                    // $cart->products()->attach($product->id, [
+                    //     'quantity' => 0,
+                    //     'price' => 0,
+                    //     'inventory'=> 0   
+                    // ]);
+                    $cart->products()->updateExistingPivot($product->id, [
+                        'inventory' => 0,
+                       
+                        // 'quantity'=>$request['count']
                     ]);
                 }
                 else{
-                    $cart->products()->updateExistingPivot($product->id, [
-                        'inventory' => 0
+                
+                    $cart->products()->attach($product->id, [
+                        'quantity' => 1,
+                        'price' => $price * $ratio,
+                        'inventory' => 0,
+                        'color' => $color ?? null,
+                        'size' => $size ?? null,
                     ]);
                 }
+              
             }
-            // آماده سازی خروجی محصولات
-            $items = $cart->products->map(function ($product)  {
-                $count = $product->pivot->quantity;
-                $inventory = $product->pivot->inventory;
-                $total_price = $product->pivot->price;
-                $price = $product->price;
-                $discount = $product->activeOffer()['percent'];
-                if ($discount > 0) {
-                    $price = $price * ((100 - $discount) / 100);
-                }
-                return [
-                    "id" => $product->id,
-                    "faName" => $product->name,
-                    "url" => $product->url,
-                    "price" => (int) $price,
-                    "cover" => $product->cover,
-                    "count" => $count,
-                    "totalPrice" => (int) $total_price,
-                    "ratio" => $product->ratio,
-                    "discount" => $discount,
-                    "inventory" => $inventory,
-                    "alertMessage" => $inventory == 0 ? 'تعداد انتخابی بیشتر از تعداد موجود است':'',
-                ];
-            });
-           
             
-            $cardCount = $items->where('inventory','>',0)->where('count','<>',0)->count();
-            $cart->count = $cardCount;
-            $cart->save();
-            $itemsForOutput = $items->map(function ($i) {
-                return [
-                    'id' => $i['id'],
-                    'faName' => $i['faName'],
-                    'url' => $i['url'],
-                    'price' => (string) number_format($i['price']),
-                    'cover' => $i['cover'],
-                    'count' => (int) $i['count'],
-                    'totalPrice' => (string) number_format($i['totalPrice']),
-                    'ratio' => $i['ratio'],
-                    'discount' => $i['discount'],
-                    'inventory' => $i['inventory'],
-                    'alertMessage' => $i['alertMessage'],
-                ];
-            })->values();
-            // DB::table('cart_product')->where('product_id', $product->id)->update([
-            //     'inventory' => 1
-            // ]);
-
+            
+            
         }
+        $reqMap = collect($all_request)->keyBy('id');
         
-        
-        
-        
+        // آماده سازی خروجی محصولات
+        $items = $cart->products->map(function ($product, $index) use ($reqMap) {
+            // dd($index);
+            $count = $product->pivot->quantity;
+            $inventory = $product->pivot->inventory;
+            $total_price = $product->pivot->price;
+            $color = $product->pivot->color;
+            $size = $product->pivot->size;
+            $price = $product->price;
+            $discount = $product->activeOffer()['percent'];
+            if ($discount > 0) {
+                $price = $price * ((100 - $discount) / 100);
+            }
+            return [
+                "id" => $product->id,
+                "faName" => $product->name,
+                "url" => $product->url,
+                "price" => (int) $price,
+                "cover" => $product->cover,
+                "count" => isset($reqMap[$product->id])
+                    ? $reqMap[$product->id]['count']
+                    : $count,
+                "totalPrice" => (int) $total_price,
+                "ratio" => $product->ratio,
+                "discount" => $discount,
+                "inventory" => $inventory,
+                'color'=> $color,
+                'size'=> $size,
+                "alertMessage" => $inventory == 0 ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
+            ];
+        });
+
+
+        $cardCount = $items->where('inventory', '>', 0)->where('count', '<>', 0)->count();
+        $cart->count = $cardCount;
+        $cart->save();
+        $itemsForOutput = $items->map(function ($i) {
+            return [
+                'id' => $i['id'],
+                'faName' => $i['faName'],
+                'url' => $i['url'],
+                'price' => (string) number_format($i['price']),
+                'cover' => $i['cover'],
+                'count' => (int) $i['count'],
+                'totalPrice' => (string) number_format($i['totalPrice']),
+                'ratio' => $i['ratio'],
+                'discount' => $i['discount'],
+                'inventory' => $i['inventory'],
+                'color' => $i['color'],
+                'size' => $i['size'],
+                'alertMessage' => $i['alertMessage'],
+            ];
+        })->values();
+        // DB::table('cart_product')->where('product_id', $product->id)->update([
+        //     'inventory' => 1
+        // ]);
+
+
+
 
         // محاسبه count و total_price کل سبد
         $cartData = $cart->products()->get()->reduce(function ($carry, $item) {
@@ -213,10 +244,27 @@ class CartController extends Controller
         $countCart = DB::table('cart_product')->where('cart_id', $cart->id)->count();
         $cart->count = $countCart;
         $cart->save();
+
+        $cart->total_price == 0 ? $cart->delete() : null;
+
+        $cart = $cart->fresh();
+        
+        if (!$cart){
+            return response()->json([
+                'data' =>
+                    null
+                ,
+                'message' => 'سبد خرید خالی است  ',
+                'statusCode' => 200,
+                'success' => true,
+                'errors' => null
+            ]);
+        }
         return response()->json([
             'data' => 
                 [
-                    'cartCount' => $cardCount,
+                    'id'=> $cart->id,
+                    'cartCount' => $countCart,
                     'amount' => (string) $amount,
                     'postPay' => "120,000",
                     'items' => $itemsForOutput
@@ -228,20 +276,7 @@ class CartController extends Controller
             'errors' => null
         ]);
     }
-    private function checkStockWarning($product, $count)
-    {
-        if ($product->warehouseInventory < ($count * $product->ratio)) {
-          
-            return response()->json([
-                'data' => null,
-                'statusCode' => 200,
-                'success' => true,
-                'message' => 'تعداد انتخاب شده بیشتر از موجودی انبار است',
-                'errors' => null
-            ]);
-        }
-        return null;
-    }
+  
 
 
     public function remove(Request $request){
@@ -287,6 +322,8 @@ class CartController extends Controller
         $items = $cart->products->map(function ($product) {
             $count = $product->pivot->quantity;
             $price = $product->pivot->price;
+            $color = $product->pivot->color;
+            $size = $product->pivot->size;
             return [
                 "id" => $product->id,
                 "faName" => $product->name,
@@ -296,8 +333,9 @@ class CartController extends Controller
                 "count" => $count,
                 "totalPrice" => (int) $price,
                 "ratio" => $product->ratio,
+                "color" => $color ?? null,
+                "size" => $size ?? null,
                 "discount" => $product->discount ?? 0,
-                // "alertMessage" => $this->checkStockWarning($product, $count * $product->ratio),
             ];
         });
 
@@ -315,6 +353,9 @@ class CartController extends Controller
                 'count' => (int) $i['count'],
                 'totalPrice' => (string) number_format($i['totalPrice']),
                 'ratio' => $i['ratio'],
+                'color' => $i['color'],
+                'size' => $i['size'],
+                
                 'discount' => $i['discount'],
                 // 'alertMessage' => $i['alertMessage'],
             ];
@@ -325,6 +366,7 @@ class CartController extends Controller
         return response()->json([
             'data' => 
                 [
+                    'id' => $cart->id,
                     'cartCount' => $cardCount,
                     'amount' => (string) $amount,
                     'postPay' => "120,000",

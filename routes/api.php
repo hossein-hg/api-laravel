@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CartController;
+use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductsController;
 use App\Http\Controllers\HomeController;
 use App\Models\Admin\Product;
@@ -33,6 +34,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('cart', [CartController::class, 'index']);
     Route::post('cart/update', [CartController::class, 'update']);
     Route::post('cart/remove', [CartController::class, 'remove']);
+
+    Route::get('order/add-from-cart', [OrderController::class, 'addFromCart']);
 
 });
 

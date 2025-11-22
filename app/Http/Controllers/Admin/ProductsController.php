@@ -37,10 +37,6 @@ class ProductsController extends Controller
         // ]);
 
 
-
-
-
-
         $query = Product::with('images','group','options','comments','colors','warranties','sizes','brands');
      
 
@@ -55,12 +51,13 @@ class ProductsController extends Controller
             $search = $request->input('global_search');
 
             $query->where(function ($q) use ($search) {
-                $q->whereHas('group', function ($q2) use ($search) {
-                    $q2->where('name', 'like', "%{$search}%");
-                })
-                ->orWhereHas('brands', function ($q2) use ($search) {
+                $q->where('name', 'like', "%{$search}%")  // اضافه کردن سرچ روی نام product
+                    ->orWhereHas('group', function ($q2) use ($search) {
                         $q2->where('name', 'like', "%{$search}%");
-                });
+                    })
+                    ->orWhereHas('brands', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    });
             });
 
            
