@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductsController;
 use App\Http\Controllers\HomeController;
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\JWTOptional;
 use App\Models\Admin\Product;
 use App\Models\Admin\Offer;
 use App\Models\User;
@@ -24,7 +25,7 @@ Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
 
 // Route::resource('product',ProductsController::class);
 Route::get('product', [ProductsController::class, 'index']);
-Route::get('product/{product:name}',[ProductsController::class,'show']);
+Route::get('product/{product:name}',[ProductsController::class,'show'])->middleware(JWTOptional::class);
 
 
 Route::get('home', [HomeController::class, 'index']);
@@ -42,6 +43,8 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('order/details/{order}', [OrderController::class, 'show']);
     Route::get('order/sale-details/{order}', [OrderController::class, 'saleShow'])->middleware(CheckRole::class . ':expert-sale');
+
+
 
 
 });

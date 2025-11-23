@@ -15,10 +15,17 @@ class CheckRole
      */
     public function handle(Request $request, Closure $next, $role): Response
     {
+        // dd('hi');
         $user = auth()->user();
         $userRole = $user->getJWTCustomClaims()['role'] ?? null;
         if ($userRole != $role) {
-            403);
+            return response()->json([
+                'data' => null,
+                'statusCode' => 403,
+                'message' => "دسترسی مجاز نیست!",
+                'success' => false,
+                'errors' => null
+            ], 403);
         }
         return $next($request);
     }

@@ -17,12 +17,15 @@ class OrederProductResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => trim($this->name),
-            'quantity'=>$this->quantity,
+            'count'=>$this->quantity,
+            'size'=>$this->size,
+            'color'=>$this->color,
             'price'=>$this->price,
             'total_price'=>$this->total_price,
             'ratio'=>$this->ratio,
             'discount' => $this->activeOffer()['percent'],
-            'avatar' => $this->cover,
+            'cover' => $this->cover,
+            'categoryName' => $this->category_name,
            
         ];
     }

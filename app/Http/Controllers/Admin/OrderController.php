@@ -94,6 +94,8 @@ class OrderController extends Controller
             'products.id',
             'products.ratio',
             'products.cover',
+            'order_product.size',
+            'order_product.color',
         ]);
 
         
@@ -125,14 +127,18 @@ class OrderController extends Controller
 
     public function saleShow(Order $order){
         $user = $order->user;
-        $products = $order->products()->withPivot('quantity')->get([
+        $products = $order->products()->withPivot('quantity')->join('groups', 'products.group_id', '=', 'groups.id')->with('category')->get([
             'order_product.quantity',
+            'order_product.size',
+            'order_product.color',
             'order_product.price as total_price',
             'products.name',
             'products.price',
             'products.id',
             'products.ratio',
             'products.cover',
+            'groups.name as category_name'
+            
         ]);
 
 

@@ -17,11 +17,35 @@ class ProductResource extends JsonResource
     public static $wrap = null;
     public function toArray(Request $request): array
     {
+        $user = auth()->user();
+        $price = (int) $this->price;
+        if ($user) {
+
+            $category = $user->category;
+            $credit = $this->price + (($this->price*$category->percent) / 100);
+            $checkes = $category->checkRules;
+            $check = $price;
+            foreach ($checkes as $item) {
+                
+                $check = $check + (($check * $item->percent) / 100);
+               
+            }
+            
+            $check = number_format($check);
+            $credit = number_format($credit);
+            
+            
+            
+
+            // $check = 
+        }
+        $cash = $this->price;
+        $cash = number_format($cash);
         $price = (int) $this->price;
         $price = $this->activeOffer()['percent'] > 0 ? $price * ((100 - $this->activeOffer()['percent']) / 100) : $price;
         $oldPrice = $this->activeOffer()['percent'] > 0 ? $this->price : 0;
 
-
+        
         $price = (string) number_format($price);
 
        
@@ -30,7 +54,11 @@ class ProductResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => trim($this->name),
-            'price' => $price,
+            'price' => [
+                'cash'=> $cash,
+                'credit'=> $credit ?? null,
+                'check'=> $check ?? null,
+            ],
             'oldPrice' => $oldPrice,
             'cover' => $this->cover,
             'url' => $this->url,
