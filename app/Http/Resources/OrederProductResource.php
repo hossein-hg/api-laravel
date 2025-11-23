@@ -22,6 +22,7 @@ class OrederProductResource extends JsonResource
             'total_price'=>$this->total_price,
             'ratio'=>$this->ratio,
             'discount' => $this->activeOffer()['percent'],
+            'avatar' => $this->cover,
            
         ];
     }

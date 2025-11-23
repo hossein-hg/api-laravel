@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CartController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductsController;
 use App\Http\Controllers\HomeController;
+use App\Http\Middleware\CheckRole;
 use App\Models\Admin\Product;
 use App\Models\Admin\Offer;
 use App\Models\User;
@@ -35,10 +36,12 @@ Route::middleware('auth:api')->group(function () {
     Route::post('cart/update', [CartController::class, 'update']);
     Route::post('cart/remove', [CartController::class, 'remove']);
 
-    Route::get('order/add-from-cart', [OrderController::class, 'addFromCart']);
+    Route::post('order/add-from-cart', [OrderController::class, 'addFromCart']);
     Route::get('orders', [OrderController::class, 'index']);
-    Route::get('order/details/{order}', [OrderController::class, 'show']);
+    Route::get('orders/all', [OrderController::class, 'all'])->middleware(CheckRole::class.':expert-sale');
 
+    Route::get('order/details/{order}', [OrderController::class, 'show']);
+    Route::get('order/sale-details/{order}', [OrderController::class, 'saleShow'])->middleware(CheckRole::class . ':expert-sale');
 
 
 });
@@ -79,7 +82,8 @@ Route::get('test',function(){
     // return $milliseconds;
 
     $user = User::findOrFail(17);
-    $user->assignRole('expert-sale');
+    dd($user->category->checkRules);
+    
     
 });
 

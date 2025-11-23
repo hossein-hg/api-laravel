@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Models\Admin\UserCategory;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -99,13 +100,14 @@ class AuthController extends Controller
                     'errors' => null
                 ], 401);
             }
-            
-           
 
-           
-            unset($user->roles);
-          
-           
+
+
+
+
+
+            $category = $user->category->name;
+            $user->categoryName = $category ?? 'یک';
             return response()->json([
                 'data' => [
                     'user' => $user  
@@ -191,19 +193,22 @@ class AuthController extends Controller
                 'name' => $otp->name,
                 'phone' => $otp->phone,
                 'gender' => $otp->gender,
+                'category_id' => 1,
                 // 'password' => bcrypt(Str::random(8)) // رمز عبور تصادفی
             ]);
+
+           
         }
 
 
 
-        $role = $user->getRoleNames()->first() ?? 'user';
-        unset($user->roles);
-        $user->role = $role ?? 'user';
-
-
        
+      
+        
 
+
+       $category = $user->category->name;
+       $user->categoryName = $category ?? 'یک'; 
         $otp->delete(); // حذف OTP پس از استفاده
 
         $token = JWTAuth::fromUser($user);

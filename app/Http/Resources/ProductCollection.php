@@ -28,7 +28,7 @@ class ProductCollection extends ResourceCollection
                 'hasNextPage' => $this->hasMorePages(), 
                 'page' => $this->currentPage(), 
                 'total_page' => $this->lastPage(), 
-                'current_page' => $this->currentPage(),
+               
                 'total_products' => $this->total(), 
                 'categories'=> CategoryResource::collection(Group::all()),
                 'price'=> [

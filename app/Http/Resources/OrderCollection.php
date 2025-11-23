@@ -21,7 +21,7 @@ class OrderCollection extends ResourceCollection
                 'hasNextPage' => $this->hasMorePages(),
                 'page' => $this->currentPage(),
                 'total_page' => $this->lastPage(),
-                'current_page' => $this->currentPage(),
+                
                 'total_orders' => $this->total(),
                
             ],

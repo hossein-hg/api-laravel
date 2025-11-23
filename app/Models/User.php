@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Admin\Address;
+use App\Models\Admin\UserCategory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -25,6 +26,7 @@ class User extends Authenticatable implements JWTSubject
         'password',
         'gender',
         'phone',
+        'category_id'
     ];
     use HasRoles;
     /**
@@ -35,6 +37,9 @@ class User extends Authenticatable implements JWTSubject
     protected $hidden = [
         'password',
         'remember_token',
+        'roles',
+        'category',
+        
     ];
 
     /**
@@ -66,5 +71,9 @@ class User extends Authenticatable implements JWTSubject
 
     public function addresses(){
         return $this->hasMany(Address::class);
+    }
+
+    public function category(){
+        return $this->belongsTo(UserCategory::class,'category_id');
     }
 }

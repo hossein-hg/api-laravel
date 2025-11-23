@@ -13,10 +13,22 @@ use Illuminate\Http\Request;
 class OrderController extends Controller
 {
 
+
+  
+
     public function index(){
+       
+        $query = Order::with('products','user')->where('user_id', auth()->user()->id);
+        $orders = $query->paginate(2);
+        return new OrderCollection($orders);
+    }
+
+    public function all()
+    {
         
-        $query = Order::with('products','user');
+        $query = Order::with('products', 'user');
         $orders = $query->paginate(10);
+        
         return new OrderCollection($orders);
     }
     public function addFromCart(Request $request){
@@ -61,8 +73,19 @@ class OrderController extends Controller
     }
 
     public function show(Order $order){
-        
         $user = auth()->user();
+        $userId = auth()->user()->id;
+        $orderUserId = $order->user_id;
+        if ($userId != $orderUserId){
+            return response()->json([
+                'data' => null,
+                'statusCode' => 404,
+                'message' => "سفارش مورد نظر یافت نشد!",
+                'success' => false,
+                'errors' => null
+            ]);
+        }
+        
         $products = $order->products()->withPivot('quantity')->get([
             'order_product.quantity',
             'order_product.price as total_price',
@@ -70,6 +93,7 @@ class OrderController extends Controller
             'products.price',
             'products.id',
             'products.ratio',
+            'products.cover',
         ]);
 
         
@@ -96,5 +120,45 @@ class OrderController extends Controller
             'errors' => null,
         ];
         return response()->json($data);   
+    }
+
+
+    public function saleShow(Order $order){
+        $user = $order->user;
+        $products = $order->products()->withPivot('quantity')->get([
+            'order_product.quantity',
+            'order_product.price as total_price',
+            'products.name',
+            'products.price',
+            'products.id',
+            'products.ratio',
+            'products.cover',
+        ]);
+
+
+        $addresse = $user->addresses[0] ?? null;
+
+
+        $data = [
+            'data' => [
+                'order' => new OrderResource($order),
+                'products' => OrederProductResource::collection($products),
+                'user' => [
+                    'name' => $user->name,
+                    'mobile' => $user->phone,
+                    'address' => $addresse,
+
+                ]
+
+
+
+            ],
+            'statusCode' => 200,
+            'message' => 'موفقیت آمیز',
+            'success' => true,
+            'errors' => null,
+        ];
+        return response()->json($data);
+
     }
 }
