@@ -24,19 +24,23 @@ class CartController extends Controller
         $items = $cart->products->map(function ($product) {
             $count = $product->pivot->quantity;
             $price = $product->pivot->price;
+            $product_price = $product->pivot->product_price;
             $color = $product->pivot->color;
             $size = $product->pivot->size;
+            $brand = $product->pivot->brand;
             return [
                 "id" => $product->id,
                 "faName" => $product->name,
                 "url" => $product->url,
-                "price" => (int) $product->price,
+                "price" => $product_price,
                 "cover" => $product->cover,
                 "count" => $count,
                 "totalPrice" => (int) $price,
                 "ratio" => $product->ratio,
                 "color" => $color ?? null,
                 "size" => $size ?? null,
+                "brand" => $brand ?? null,
+                'selectedPrice' => $product->pivot->pay_type,
                 "discount" => $product->discount ?? 0,
             ];
         });
@@ -56,6 +60,8 @@ class CartController extends Controller
                 'ratio' => $i['ratio'],
                 'color' => $i['color'],
                 'size' => $i['size'],
+                'brand' => $i['brand'],
+                'selectedPrice' => $i['selectedPrice'],
                 'discount' => $i['discount'],
                 // 'alertMessage' => $i['alertMessage'],
             ];
@@ -63,6 +69,25 @@ class CartController extends Controller
 
         $amount = number_format($cart->total_price);
 
+        $credit_count = DB::table('cart_product')->where('pay_type', 'credit')->count();
+        $cash_count = DB::table('cart_product')->where('pay_type', 'cash')->count();
+        $check_count = DB::table('cart_product')->where('pay_type', 'LIKE', '%day_%')->count();
+        $credit_total_price = number_format(DB::table('cart_product')->where('pay_type', 'credit')->sum('price'));
+        $cash_total_price = number_format(DB::table('cart_product')->where('pay_type', 'cash')->sum('price'));
+
+
+        $result = DB::table('cart_product')->where('pay_type', 'LIKE', '%day_%')
+            ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
+            ->groupBy('pay_type')
+            ->get();
+
+        $checkes = $result->map(function ($item) {
+            return [
+
+                'pay_type' => $item->pay_type,
+                'total_price' => number_format($item->total_price)
+            ];
+        });
         return response()->json([
             'data' => 
                 [
@@ -70,6 +95,12 @@ class CartController extends Controller
                     'cartCount' => $cardCount,
                     'amount' => (string) $amount,
                     'postPay' => "120,000",
+                    'creditCount' => $credit_count,
+                    'checkesCount' => $check_count,
+                    'cashCount' => $cash_count,
+                    'checkes' => $checkes ?? null,
+                    'credit_total_price' => $credit_total_price,
+                    'cash_total_price' => $cash_total_price,
                     'items' => $itemsForOutput
                 ]
                 ,
@@ -85,19 +116,115 @@ class CartController extends Controller
     {
        
         foreach ($request->all() as $key => $request) {
+
+            $validatedValues = ['credit', 'cash'];
+
+            $selectedPrice = $request['selectedPrice'] ?? '';
+
+            if (!in_array($selectedPrice, $validatedValues) && !preg_match('/^day_\d+$/', $selectedPrice)) {
+                return response()->json([
+                    'data' => null,
+                    'statusCode' => 404,
+                    'success' => false,
+                    'message' => 'مقدار وارد شده صحیح نیست!',
+                    'errors' => null
+                ]); 
+            }
+                $check = substr($request['selectedPrice'], 0, 3);
+                $product = Product::findOrFail($request['id']);
+                $price = $product->price * $product->ratio;
+                $count = $request['count'];
+                $user = auth()->user();
+                $category = $user->category;
+                if ($request['selectedPrice'] == 'credit') {
+                    
+                    $max_credit = $category->max_credit;
+                    $remainder_credit = $max_credit;
+                    $price = $price + (($price * $category->percent) / 100);
+                    $total_price = $price * $count;
+                    
+                    if($price * $count >= $remainder_credit){
+                        
+                    }
+                    else{
+
+                    }    
+
+                    
+                   
+                }
+                if ($check == 'day'){
+                    $check = substr($request['selectedPrice'], 4);
+                    $checkRules = $category->checkRules;
+
+                    $check = $checkRules->where('term_days',$check)->first();
+                    if ($check) {
+                          
+                        $price = $price + (($price * $check->percent) / 100);
+                    }
+                    
+                }
+               
                 $all_request[] = [
                     'id'=> $request['id'],
                     'count'=> $request['count'],
                 ];
-               
+                
+                
+
                 $color = $request['color'] ?? null;
+                if ($color) {
+                    $productColors = $product->colors;
+                    if ($productColors){
+                        $selectedColor = $productColors->where('color', $color)->first();
+                        if ($selectedColor) {
+                            $increasePrice = $selectedColor->price * $product->ratio;
+                             $price += $increasePrice;
+                           
+                        }
+                       
+                    }
+                    
+                }
+          
                 $size = $request['size'] ?? null;
+                if ($size) {
+                    $productSizes = $product->sizes;
+                    if ($productSizes) {
+                        $selectedSize = $productSizes->where('size', $size)->first();
+                        if ($selectedSize) {
+                            $increasePrice = $selectedSize->price * $product->ratio;
+                            $price += $increasePrice;
+
+                        }
+
+                    }
+
+                }
+                $brand = $request['brand'] ?? null;
+               
+                if ($brand) {
+                    $productBrands = $product->brands;
+                  
+                    if ($productBrands) {
+                        $selectedBrand = $productBrands->where('name', $brand)->first();
+                      
+                        if ($selectedBrand) {
+                            $increasePrice = $selectedBrand->price * $product->ratio;
+                            $price += $increasePrice;
+
+                        }
+
+                    }
+
+                }
                 $inventory = true;
-                $count = $request['count'];
-           
-                $product = Product::findOrFail($request['id']);
+                
+                
+                
+
                 $discount = $product->activeOffer()['percent'];
-                $price = $product->price;
+                
                 if ($discount > 0){
                      $price = $price * ((100 - $discount)/100);
                 }
@@ -113,21 +240,29 @@ class CartController extends Controller
             $ratio = $product->ratio;
             $existingProduct = $cart->products()->find($product->id);
             if ($inventory){
-                $total_price_for_product = $count * $price * $ratio;
+                $total_price_for_product = $count * $price;
 
                 if ($existingProduct) {
                     $cart->products()->updateExistingPivot($product->id, [
                         'quantity' => $count,
+                        'ratio' => $product->ratio,
                         'price' => $total_price_for_product, 
                         'color'=> $color ?? null,                      
-                        'size'=> $size ?? null,                      
+                        'size'=> $size ?? null,
+                        'brand' => $brand ?? null,
+                        'product_price' => $price,
+                        'pay_type'=> $request['selectedPrice']                      
                     ]);
                 } else {
                     $cart->products()->attach($product->id, [
                         'quantity' => $count,
+                        'ratio' => $product->ratio,
                         'price' => $total_price_for_product,
                         'color' => $color ?? null,
                         'size' => $size ?? null,
+                        'brand' => $brand ?? null,
+                        'product_price' => $price,
+                        'pay_type' => $request['selectedPrice']
 
                     ]);
                 }
@@ -151,10 +286,14 @@ class CartController extends Controller
                 
                     $cart->products()->attach($product->id, [
                         'quantity' => 1,
-                        'price' => $price * $ratio,
+                        'price' => $price,
+                        'ratio' => $product->ratio,
                         'inventory' => 0,
                         'color' => $color ?? null,
                         'size' => $size ?? null,
+                        'product_price' => $price,
+                        'pay_type' => $request['selectedPrice']
+
                     ]);
                 }
               
@@ -172,7 +311,10 @@ class CartController extends Controller
             $inventory = $product->pivot->inventory;
             $total_price = $product->pivot->price;
             $color = $product->pivot->color;
+            
+            $product_price = $product->pivot->product_price;
             $size = $product->pivot->size;
+            $brand = $product->pivot->brand;
             $price = $product->price;
             $discount = $product->activeOffer()['percent'];
             if ($discount > 0) {
@@ -182,7 +324,7 @@ class CartController extends Controller
                 "id" => $product->id,
                 "faName" => $product->name,
                 "url" => $product->url,
-                "price" => (int) $price,
+                "price" => (int) $product_price,
                 "cover" => $product->cover,
                 "count" => isset($reqMap[$product->id])
                     ? $reqMap[$product->id]['count']
@@ -193,6 +335,8 @@ class CartController extends Controller
                 "inventory" => $inventory,
                 'color'=> $color,
                 'size'=> $size,
+                'brand'=> $brand,
+                'selectedPrice'=> $product->pivot->pay_type,
                 "alertMessage" => $inventory == 0 ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
             ];
         });
@@ -215,6 +359,8 @@ class CartController extends Controller
                 'inventory' => $i['inventory'],
                 'color' => $i['color'],
                 'size' => $i['size'],
+                'brand' => $i['brand'],
+                'selectedPrice' => $i['selectedPrice'],
                 'alertMessage' => $i['alertMessage'],
             ];
         })->values();
@@ -241,6 +387,28 @@ class CartController extends Controller
         DB::table('cart_product')->where('quantity', '<>',0)->update([
             'inventory'=>1
         ]);
+       
+        $credit_count = DB::table('cart_product')->where('pay_type','credit')->count();
+        $cash_count = DB::table('cart_product')->where('pay_type','cash')->count();
+        $check_count = DB::table('cart_product')->where('pay_type','LIKE','%day_%')->count();
+        $credit_total_price = number_format(DB::table('cart_product')->where('pay_type', 'credit')->sum('price'));
+        $cash_total_price = number_format(DB::table('cart_product')->where('pay_type', 'cash')->sum('price'));
+        $result = DB::table('cart_product')->where('pay_type', 'LIKE', '%day_%')
+            ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
+            ->groupBy('pay_type')
+            ->get();
+       
+        $checkes = $result->map(function ($item) {
+            return [
+                
+                'pay_type'=> $item->pay_type,
+                'total_price' => number_format($item->total_price)
+            ];
+        });
+         
+       
+        
+        // $checksCount = 
         $countCart = DB::table('cart_product')->where('cart_id', $cart->id)->count();
         $cart->count = $countCart;
         $cart->save();
@@ -254,7 +422,7 @@ class CartController extends Controller
                 'data' =>
                     null
                 ,
-                'message' => 'سبد خرید خالی است  ',
+                'message' => 'سبد خرید خالی است',
                 'statusCode' => 200,
                 'success' => true,
                 'errors' => null
@@ -267,7 +435,14 @@ class CartController extends Controller
                     'cartCount' => $countCart,
                     'amount' => (string) $amount,
                     'postPay' => "120,000",
-                    'items' => $itemsForOutput
+                    'creditCount'=> $credit_count,
+                    'checkesCount'=> $check_count,
+                    'cashCount'=> $cash_count,
+                    'checkes'=>$checkes ?? null,
+                    'credit_total_price'=> $credit_total_price,
+                    'cash_total_price'=> $cash_total_price,
+                    'items' => $itemsForOutput,
+                    
                 ]
                 ,
             'message' => 'محصول اضافه شد',
@@ -328,7 +503,7 @@ class CartController extends Controller
                 "id" => $product->id,
                 "faName" => $product->name,
                 "url" => $product->url,
-                "price" => (int) $product->price,
+                "price" => (int) $price,
                 "cover" => $product->cover,
                 "count" => $count,
                 "totalPrice" => (int) $price,

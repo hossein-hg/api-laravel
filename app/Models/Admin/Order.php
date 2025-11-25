@@ -10,7 +10,7 @@ class Order extends Model
 {
     public function products()
     {
-        return $this->belongsToMany(Product::class)->withPivot('quantity', 'price', 'ratio','discount','size','color')->withTimestamps();
+        return $this->belongsToMany(Product::class)->withPivot('quantity', 'price', 'ratio','discount','size','color','brand','pay_type','product_price')->withTimestamps();
     }
 
     public function user(){

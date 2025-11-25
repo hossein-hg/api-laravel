@@ -9,7 +9,7 @@ use App\Models\Admin\Cart;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Order;
 use Illuminate\Http\Request;
-
+use App\Http\Resources\OrderProductCollection;
 class OrderController extends Controller
 {
 
@@ -54,6 +54,9 @@ class OrderController extends Controller
                     'discount' => $item->discount,
                     'size' => $item->pivot->size,
                     'color' => $item->pivot->color,
+                    'brand' => $item->pivot->brand,
+                    'pay_type' => $item->pivot->pay_type,
+                    'product_price' => $item->pivot->product_price,
                 ];
                 if ($order->products()->where('products.id', $productId)->exists()) {
                     $order->products()->updateExistingPivot($productId, $attributes);
@@ -105,7 +108,8 @@ class OrderController extends Controller
         $data = [
             'data' => [
                 'order' => new OrderResource( $order ) ,
-                'products'=> OrederProductResource::collection($products),
+                'products' => new OrderProductCollection($products),
+                
                 'user'=> [
                     'name'=> $user->name,
                     'mobile'=> $user->phone,
@@ -126,8 +130,9 @@ class OrderController extends Controller
 
 
     public function saleShow(Order $order){
+       
         $user = $order->user;
-        $products = $order->products()->withPivot('quantity')->join('groups', 'products.group_id', '=', 'groups.id')->with('category')->get([
+        $products = $order->products()->withPivot('quantity')->join('groups', 'products.group_id', '=', 'groups.id')->with('category')->select([
             'order_product.quantity',
             'order_product.size',
             'order_product.color',
@@ -139,7 +144,7 @@ class OrderController extends Controller
             'products.cover',
             'groups.name as category_name'
             
-        ]);
+        ])->paginate(2);
 
 
         $addresse = $user->addresses[0] ?? null;
@@ -148,7 +153,7 @@ class OrderController extends Controller
         $data = [
             'data' => [
                 'order' => new OrderResource($order),
-                'products' => OrederProductResource::collection($products),
+                'products' => new OrderProductCollection($products),
                 'user' => [
                     'name' => $user->name,
                     'mobile' => $user->phone,

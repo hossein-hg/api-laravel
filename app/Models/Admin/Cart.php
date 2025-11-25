@@ -13,7 +13,7 @@ class Cart extends Model
 
     public function products()
     {
-        return $this->belongsToMany(Product::class)->withPivot('quantity','price','inventory','color','size')->withTimestamps();
+        return $this->belongsToMany(Product::class)->withPivot('quantity','price','inventory','color','size','ratio','product_price','pay_type','brand')->withTimestamps();
     }
 
     protected $fillable = ['total_price','count','user_id'];
