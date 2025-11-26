@@ -24,7 +24,7 @@ Route::post('logout', [AuthController::class, 'logout']);
 Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
 
 // Route::resource('product',ProductsController::class);
-Route::get('product', [ProductsController::class, 'index']);
+Route::get('product', [ProductsController::class, 'index'])->middleware(JWTOptional::class);
 Route::get('product/{product:name}',[ProductsController::class,'show'])->middleware(JWTOptional::class);
 
 
@@ -43,6 +43,10 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('order/details/{order}', [OrderController::class, 'show']);
     Route::get('order/sale-details/{order}', [OrderController::class, 'saleShow'])->middleware(CheckRole::class . ':expert-sale');
+    Route::post('order/product-delete', [OrderController::class, 'saleProductDelete'])->middleware(CheckRole::class . ':expert-sale');
+    Route::post('order/delete', [OrderController::class, 'delete'])->middleware(CheckRole::class . ':expert-sale');
+
+    Route::post('order/upload-checkes', [OrderController::class,'uploadCheckes']);
 
 
 

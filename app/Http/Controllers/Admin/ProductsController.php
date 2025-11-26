@@ -120,7 +120,7 @@ class ProductsController extends Controller
         }
 
         // pagination
-        $products = $query->paginate(perPage: 2);
+        $products = $query->paginate(perPage: 5);
 
         return new ProductCollection($products);
 
@@ -132,6 +132,7 @@ class ProductsController extends Controller
     public function show(Product $product)
     {
         // dd($product);
+        
         $data = [
             'data'=> ['product'=>new ProductResource($product)],
             'statusCode' => 200,

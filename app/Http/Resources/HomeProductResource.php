@@ -5,18 +5,15 @@ use App\Models\Admin\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ProductListResource extends JsonResource
+class HomeProductResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
      *
      * @return array<string, mixed>
      */
-    
-    public static $wrap = null;
     public function toArray(Request $request): array
     {
-        
         $user = auth()->user();
         $price = (int) $this->price;
         $price = $this->price * $this->ratio;
@@ -47,40 +44,40 @@ class ProductListResource extends JsonResource
             $oldPrices['credit'] = $this->activeOffer()['percent'] > 0 ? $price + (($price * $category->percent) / 100) : 0;
             $prices['credit'] = $prices['cash'] + (($prices['cash'] * $category->percent) / 100);
             $prices['checkes'] = $checksList;
-            $oldPrices['checkes'] =  $checksListOld;
+            $oldPrices['checkes'] = $checksListOld;
             $prices['credit'] = number_format($prices['credit']);
             $oldPrices['credit'] = number_format($oldPrices['credit']);
 
         } else {
             $prices['cash'] = number_format($price);
             $oldPrices['cash'] = $this->activeOffer()['percent'] > 0 ? $price : 0;
-            
+
             $prices['cash'] = $this->activeOffer()['percent'] > 0 ? $price * ((100 - $this->activeOffer()['percent']) / 100) : $price;
 
         }
-        
+
         $cash = $this->price;
         $cash = number_format($cash);
         $price = (int) $this->price;
 
         // $price = $this->activeOffer()['percent'] > 0 ? $price * ((100 - $this->activeOffer()['percent']) / 100) : $price;
-       
+
 
 
         $price = (string) number_format($price);
 
 
-       
+
         $prices['cash'] = number_format($prices['cash']);
 
 
-        $oldPrices['cash'] = number_format( $oldPrices['cash']);
+        $oldPrices['cash'] = number_format($oldPrices['cash']);
 
         return [
             'id' => $this->id,
             'name' => trim($this->name),
-            'price' => $prices,
-            'oldPrice' => $oldPrices,
+            'price' => $price,
+            'oldPrice' => $price,
             'cover' => $this->cover,
             'url' => $this->url,
             'inventory' => $this->inventory,
@@ -89,7 +86,7 @@ class ProductListResource extends JsonResource
             'salesCount' => $this->salesCount,
             'countDown' => $this->activeOffer()['countDown'],
             'warehouseInventory' => $this->warehouseInventory,
-            'satisfaction' => (int)$this->satisfaction,
+            'satisfaction' => (int) $this->satisfaction,
             'additionalInformation' => trim($this->additionalInformation),
             'images' => $this->whenLoaded('images', fn() => $this->images->pluck('path')),
             'categoryName' => $this->whenLoaded('group', fn() => trim($this->group->name)),

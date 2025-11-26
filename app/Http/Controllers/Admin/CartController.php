@@ -308,6 +308,7 @@ class CartController extends Controller
         $items = $cart->products->map(function ($product, $index) use ($reqMap) {
             // dd($index);
             $count = $product->pivot->quantity;
+         
             $inventory = $product->pivot->inventory;
             $total_price = $product->pivot->price;
             $color = $product->pivot->color;
@@ -326,9 +327,7 @@ class CartController extends Controller
                 "url" => $product->url,
                 "price" => (int) $product_price,
                 "cover" => $product->cover,
-                "count" => isset($reqMap[$product->id])
-                    ? $reqMap[$product->id]['count']
-                    : $count,
+                "count" => $count,
                 "totalPrice" => (int) $total_price,
                 "ratio" => $product->ratio,
                 "discount" => $discount,

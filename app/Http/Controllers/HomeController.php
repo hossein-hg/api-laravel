@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\BannerResource;
 use App\Http\Resources\CategoryListResource;
 use App\Http\Resources\CommentResource;
+use App\Http\Resources\HomeProductResource;
 use App\Http\Resources\SettingResource;
 use App\Models\Admin\Banner;
 use App\Models\Admin\Comment;
@@ -50,19 +51,19 @@ class HomeController extends Controller
                       'image' => 'https://files.epyc.ir/images/latest.jpg',
                       "subTitle"=>"لیست آخرین محصولات جدید",
                       'description'=> 'فرهنگ پیشرو در زبان فارسی ایجاد کرد، در این صورت می توان امید داشت که تمام و دشواری م',
-                      'products' => ProductListResource::collection($latest_products)
+                      'products' => HomeProductResource::collection($latest_products)
                 ],
                 'popularProducts' => [
                     "title" => "محبوب ترین محصولات",
                     "subTitle" => "لیست محبوب ترین محصولات جدید",
-                    'products' => ProductListResource::collection($latest_products)
+                    'products' => HomeProductResource::collection($latest_products)
                 ],
                 'top_rated_products' => [
                     "title" => "برترین محصولات",
                     "subTitle" => "لیست آخرین محصولات جدید",
                     'image' => 'https://files.epyc.ir/images/latest.jpg',
                     'description' => 'فرهنگ پیشرو در زبان فارسی ایجاد کرد، در این صورت می توان امید داشت که تمام و دشواری م',
-                    'products' => ProductListResource::collection($latest_products)
+                    'products' => HomeProductResource::collection($latest_products)
                 ],
                 'categoryList' => [
                     "title"=> "برترین دسته بندی ها",
@@ -72,20 +73,20 @@ class HomeController extends Controller
                 'metadata' => new SettingResource($setting),
                 'topCarousel'=>  BannerResource::collection($topBanners),
                 'banners'=> BannerResource::collection($banners),
-                'offerList' => ProductListResource::collection($offer_products),
+                'offerList' => HomeProductResource::collection($offer_products),
                 'bestOffer' => [
                         'img'=>'https://files.epyc.ir/images/offer.jpg',
                         'title'=> 'اولین های در ایران زمین',
                         'subTitle'=> 'تخفیف ویژه برای شما',
                         'discount'=> 'تا '.$maxDiscount.' درصد تخفیف',
-                        'products'=> ProductListResource::collection($products),
+                        'products'=> HomeProductResource::collection($products),
 
                 ],
                 'bestOfferProducts' => [
                     
                     'title' => 'آخرین محصولات تخفیف دار',
                     'subTitle' => 'لیست آخرین محصولات جدید',
-                    'products' => ProductListResource::collection($products),
+                    'products' => HomeProductResource::collection($products),
 
                 ],
                 'testimonials' => [
@@ -98,7 +99,7 @@ class HomeController extends Controller
                      "title"=>"انواع محصولات",
                     "subTitle"=>"از هر نوع برند",
                     "description"=>"فرهنگ پیشرو در زبان فارسی ایجاد کرد، در این صورت می توان امید داشت که تمام و دشواری موج",
-                    'products'=> ProductListResource::collection($products),
+                    'products'=> HomeProductResource::collection($products),
                 ],
 
                 'bestProduct' => [
@@ -106,7 +107,7 @@ class HomeController extends Controller
                     "subTitle" => "فقط امروز تخفیف داریم",
                      "discount_description"=> "تا ۹۰ درصد تفیف ویژه",
                      'image'=> 'https://files.epyc.ir/images/best.png',
-                    'products' => ProductListResource::collection($best_products),
+                    'products' => HomeProductResource::collection($best_products),
                 ],
                 
                 

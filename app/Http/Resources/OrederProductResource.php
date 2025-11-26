@@ -20,13 +20,15 @@ class OrederProductResource extends JsonResource
             'count'=>$this->quantity,
             'size'=>$this->size,
             'color'=>$this->color,
-            'price'=>number_format((int)$this->price),
-            'total_price'=>number_format((int)$this->total_price),
+            'price'=>number_format($this->product_price),
+            'total_price'=>number_format($this->total_price),
             'ratio'=>$this->ratio,
             'discount' => $this->activeOffer()['percent'],
             'cover' => $this->cover,
-            'categoryName' => $this->category_name,
-           
+            'categoryName' => $this->group->name, 
+            'sizes' => $this->whenLoaded('sizes', fn() => $this->sizes->pluck('size')),
+            'colors' => $this->whenLoaded('colors', fn() => $this->colors->pluck('color')),
+            'brands' => $this->whenLoaded('brands', fn() => $this->brands->pluck('name')),
         ];
     }
 }
