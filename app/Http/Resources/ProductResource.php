@@ -2,7 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Admin\Brand;
+use App\Models\Admin\Color;
 use App\Models\Admin\Product;
+use App\Models\Admin\Size;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,10 +20,31 @@ class ProductResource extends JsonResource
     public static $wrap = null;
     public function toArray(Request $request): array
     {
+        $request_color = request()->query('color');
+        $request_size = request()->query('size');
+        $request_brand = request()->query('brand');
+        $request_count = request()->query('count');
         
+        $color = request()->query('color') ? Color::where('color', $request_color)->first() : null;
+        $size = request()->query('size') ? Size::where('size', $request_size)->first() : null;
+        $brand = request()->query('brand') ? Brand::where('name', $request_brand)->first() : null;
+        $color_price = $this->colors->first()?->price * $this->ratio ?? 0;
+        $brand_price = $this->brands->first()?->price * $this->ratio ?? 0;
+        $size_price = $this->sizes->first()?->price * $this->ratio ?? 0;
+        if ($color) :  $color_price = $color->price * $this->ratio; endif;
+        if ($size) :  $size_price = $size->price * $this->ratio; endif;
+        if ($brand) :  $brand_price = $brand->price * $this->ratio; endif;
+        
+        
+        $color_name = $this->colors->first()?->color  ?? null;
+        $brand_name = $this->brands->first()?->name  ?? null;
+        $size_name = $this->sizes->first()?->size  ?? null;
         $user = auth()->user();
         $price = (int) $this->price;
-        $price = $this->price * $this->ratio;
+
+        $price = ($this->price * $this->ratio) + $color_price + $brand_price + $size_price;
+        if ($request_count) : $price = ($this->price * $this->ratio * (int) $request_count) + $color_price + $brand_price + $size_price; endif;
+        
         if ($user) {
 
             $category = $user->category;
@@ -39,7 +63,7 @@ class ProductResource extends JsonResource
                     $checksList['day_' . $item->term_days] = number_format($checksList['day_' . $item->term_days]);
                 }
             }
-          
+            
             $prices = [];
             $prices['cash'] = $price;
             
@@ -108,6 +132,7 @@ class ProductResource extends JsonResource
             'commentsCount'=>$this->comments()->count(),
             'related_products'=>Product::where('group_id',$this->group_id)->get()->except($this->id),
             'update' => $this->updated_at->format('Y-m-d H:i:s'),
+            'defaults'=> ['color'=> $color_name, 'size'=> $size_name, 'brand'=> $brand_name]
         ];
     }
 

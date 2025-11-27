@@ -16,10 +16,15 @@ class ProductListResource extends JsonResource
     public static $wrap = null;
     public function toArray(Request $request): array
     {
-        
+        $color_price = $this->colors->first()?->price * $this->ratio ?? 0;
+        $brand_price = $this->brands->first()?->price * $this->ratio ?? 0;
+        $size_price = $this->sizes->first()?->price * $this->ratio ?? 0;
+        $color_name = $this->colors->first()?->color ?? null;
+        $brand_name = $this->brands->first()?->name ?? null;
+        $size_name = $this->sizes->first()?->size ?? null;
         $user = auth()->user();
         $price = (int) $this->price;
-        $price = $this->price * $this->ratio;
+        $price = ($this->price * $this->ratio) + $color_price + $brand_price + $size_price;
         if ($user) {
 
             $category = $user->category;
@@ -107,6 +112,7 @@ class ProductListResource extends JsonResource
             'commentsCount' => $this->whenLoaded('comments', fn(): mixed => $this->comments()->count()),
             'related_products' => Product::where('group_id', $this->group_id)->get()->except($this->id)->pluck('name'),
             'update' => $this->updated_at->format('Y-m-d H:i:s'),
+            'defaults' => ['color' => $color_name, 'size' => $size_name, 'brand' => $brand_name]
         ];
     }
 }

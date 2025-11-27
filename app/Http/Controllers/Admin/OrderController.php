@@ -10,6 +10,7 @@ use App\Http\Resources\ProductResource;
 use App\Models\Admin\Cart;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Check;
+use App\Models\Admin\Color;
 use App\Models\Admin\Order;
 use App\Models\Admin\Product;
 use Illuminate\Support\Str;
@@ -95,12 +96,12 @@ class OrderController extends Controller
                 'errors' => null
             ]);
         }
-        $credit_count = DB::table('order_product')->where('pay_type', 'credit')->count();
-        $cash_count = DB::table('order_product')->where('pay_type', 'cash')->count();
-        $check_count = DB::table('order_product')->where('pay_type', 'LIKE', '%day_%')->count();
-        $credit_total_price = number_format(DB::table('order_product')->where('pay_type', 'credit')->sum('price'));
-        $cash_total_price = number_format(DB::table('order_product')->where('pay_type', 'cash')->sum('price'));
-        $result = DB::table('order_product')->where('pay_type', 'LIKE', '%day_%')
+        $credit_count = DB::table('order_product')->where('order_id',$order->id)->where('pay_type', 'credit')->count();
+        $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
+        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
+        $cash_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->sum('price'));
+        $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
             ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
             ->groupBy('pay_type')
             ->get();
@@ -156,6 +157,26 @@ class OrderController extends Controller
     public function saleShow(Order $order){
        
         $user = $order->user;
+
+        $credit_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->count();
+        $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
+        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
+        $cash_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->sum('price'));
+        $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
+            ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
+            ->groupBy('pay_type')
+            ->get();
+        $checkes = $result->map(function ($item) {
+            return [
+
+                'pay_type' => $item->pay_type,
+                'total_price' => number_format($item->total_price)
+            ];
+        });
+
+
+
         $products = $order->products()->withPivot('quantity')->join('groups', 'products.group_id', '=', 'groups.id')->with('category')->select([
             'order_product.quantity',
             'order_product.size',
@@ -176,6 +197,12 @@ class OrderController extends Controller
 
         $data = [
             'data' => [
+                'creditCount' => $credit_count,
+                'checkesCount' => $check_count,
+                'cashCount' => $cash_count,
+                'checkes' => $checkes ?? null,
+                'credit_total_price' => $credit_total_price,
+                'cash_total_price' => $cash_total_price,
                 'order' => new OrderResource($order),
                 'products' => new OrderProductCollection($products),
                 'user' => [
@@ -275,7 +302,7 @@ class OrderController extends Controller
                 'user_id'=> $user->id,
                 'term_days'=> $payType,
                 'image'=> $relativePath,
-
+                'order_id'=> $request->order_id
             ]);
             return response()->json([
                 
@@ -306,7 +333,8 @@ class OrderController extends Controller
                 'user_id' => $user->id,
                 'term_days' => $payType,
                 'image' => $relativePath,
-                'status'=> 1    
+                'status'=> 1,
+                'order_id' => $request->order_id    
             ]);
             return response()->json([
                 
@@ -322,4 +350,32 @@ class OrderController extends Controller
 
         }
     }
+
+
+    public function saleProductEdit(Request $request){
+        
+        $order = Order::findOrFail($request->order_id);
+        $product = Product::findOrFail($request->product_id);
+        $selectedColor = $request->input('color') ?? null;
+        $selectedColor = $request->input('color') ?? null;
+        $selectedSize = $request->input('size') ?? null;
+        $selectedBrand = $request->input('brand') ?? null;
+        $selectedCount = $request->input('count') ?? null;
+        
+        if($selectedColor){
+            $color = Color::where('product_id', $product->id)->where('color', $selectedColor)->first();
+            $row = DB::table('order_product')
+                ->where('order_id', $order->id)
+                ->where('product_id', $product->id)
+                ->first();
+            $previous_color = $row->color ?? null;
+            $previous_product_price = $row->price ?? null;    
+            $previous_color_price = Color::where('product_id',$product->id)->where('color', $previous_color)->value('price');
+            
+            dd($previous_product_price);
+            
+        }
+        dd($selectedCount);    
+    }
 }
+

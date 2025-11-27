@@ -69,14 +69,14 @@ class CartController extends Controller
 
         $amount = number_format($cart->total_price);
 
-        $credit_count = DB::table('cart_product')->where('pay_type', 'credit')->count();
-        $cash_count = DB::table('cart_product')->where('pay_type', 'cash')->count();
-        $check_count = DB::table('cart_product')->where('pay_type', 'LIKE', '%day_%')->count();
-        $credit_total_price = number_format(DB::table('cart_product')->where('pay_type', 'credit')->sum('price'));
-        $cash_total_price = number_format(DB::table('cart_product')->where('pay_type', 'cash')->sum('price'));
+        $credit_count = DB::table('cart_product')->where('cart_id',$cart->id)->where('pay_type', 'credit')->count();
+        $cash_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'cash')->count();
+        $check_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $credit_total_price = number_format(DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'credit')->sum('price'));
+        $cash_total_price = number_format(DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'cash')->sum('price'));
 
 
-        $result = DB::table('cart_product')->where('pay_type', 'LIKE', '%day_%')
+        $result = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'LIKE', '%day_%')
             ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
             ->groupBy('pay_type')
             ->get();
@@ -132,6 +132,7 @@ class CartController extends Controller
             }
                 $check = substr($request['selectedPrice'], 0, 3);
                 $product = Product::findOrFail($request['id']);
+
                 $price = $product->price * $product->ratio;
                 $count = $request['count'];
                 $user = auth()->user();
@@ -171,22 +172,27 @@ class CartController extends Controller
                 ];
                 
                 
-
+               
                 $color = $request['color'] ?? null;
                 if ($color) {
+                
                     $productColors = $product->colors;
+                    
                     if ($productColors){
+                   
                         $selectedColor = $productColors->where('color', $color)->first();
+                        
                         if ($selectedColor) {
                             $increasePrice = $selectedColor->price * $product->ratio;
                              $price += $increasePrice;
-                           
-                        }
+                      
+
+                    }
                        
                     }
                     
                 }
-          
+               
                 $size = $request['size'] ?? null;
                 if ($size) {
                     $productSizes = $product->sizes;
@@ -201,6 +207,7 @@ class CartController extends Controller
                     }
 
                 }
+                
                 $brand = $request['brand'] ?? null;
                
                 if ($brand) {
@@ -382,17 +389,17 @@ class CartController extends Controller
         $cart->save();
         $amount = number_format($cart->total_price);
 
-        DB::table('cart_product')->where('quantity', 0)->where('inventory',0)->delete();
-        DB::table('cart_product')->where('quantity', '<>',0)->update([
+        DB::table('cart_product')->where('cart_id', $cart->id)->where('quantity', 0)->where('inventory',0)->delete();
+        DB::table('cart_product')->where('cart_id', $cart->id)->where('quantity', '<>',0)->update([
             'inventory'=>1
         ]);
        
-        $credit_count = DB::table('cart_product')->where('pay_type','credit')->count();
-        $cash_count = DB::table('cart_product')->where('pay_type','cash')->count();
-        $check_count = DB::table('cart_product')->where('pay_type','LIKE','%day_%')->count();
-        $credit_total_price = number_format(DB::table('cart_product')->where('pay_type', 'credit')->sum('price'));
-        $cash_total_price = number_format(DB::table('cart_product')->where('pay_type', 'cash')->sum('price'));
-        $result = DB::table('cart_product')->where('pay_type', 'LIKE', '%day_%')
+        $credit_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type','credit')->count();
+        $cash_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type','cash')->count();
+        $check_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type','LIKE','%day_%')->count();
+        $credit_total_price = number_format(DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'credit')->sum('price'));
+        $cash_total_price = number_format(DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'cash')->sum('price'));
+        $result = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'LIKE', '%day_%')
             ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
             ->groupBy('pay_type')
             ->get();
@@ -491,6 +498,47 @@ class CartController extends Controller
         // $cart->count = $cartData['count'];
         $cart->total_price = $cartData['total_price'];
         $cart->save();
+
+
+
+        $cartData = $cart->products()->get()->reduce(function ($carry, $item) {
+            $carry['count'] += $item->pivot->quantity;
+            $carry['total_price'] += $item->pivot->price;
+            return $carry;
+        }, ['count' => 0, 'total_price' => 0]);
+
+        // $cart->count = $cartData['count'];
+        $cart->total_price = $cartData['total_price'];
+        $cart->save();
+        $amount = number_format($cart->total_price);
+
+        DB::table('cart_product')->where('cart_id', $cart->id)->where('quantity', 0)->where('inventory', 0)->delete();
+        DB::table('cart_product')->where('cart_id', $cart->id)->where('quantity', '<>', 0)->update([
+            'inventory' => 1
+        ]);
+
+        $credit_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'credit')->count();
+        $cash_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'cash')->count();
+        $check_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $credit_total_price = number_format(DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'credit')->sum('price'));
+        $cash_total_price = number_format(DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'cash')->sum('price'));
+        $result = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'LIKE', '%day_%')
+            ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
+            ->groupBy('pay_type')
+            ->get();
+
+        $checkes = $result->map(function ($item) {
+            return [
+
+                'pay_type' => $item->pay_type,
+                'total_price' => number_format($item->total_price)
+            ];
+        });
+
+
+
+        // $checksCount = 
+        $countCart = DB::table('cart_product')->where('cart_id', $cart->id)->count();
         
         // آماده سازی خروجی محصولات
         $items = $cart->products->map(function ($product) {
@@ -510,6 +558,7 @@ class CartController extends Controller
                 "color" => $color ?? null,
                 "size" => $size ?? null,
                 "discount" => $product->discount ?? 0,
+                'selectedPrice' => $product->pivot->pay_type,
             ];
         });
 
@@ -529,6 +578,7 @@ class CartController extends Controller
                 'ratio' => $i['ratio'],
                 'color' => $i['color'],
                 'size' => $i['size'],
+                'selectedPrice' => $i['selectedPrice'],
                 
                 'discount' => $i['discount'],
                 // 'alertMessage' => $i['alertMessage'],
@@ -540,11 +590,17 @@ class CartController extends Controller
         return response()->json([
             'data' => 
                 [
-                    'id' => $cart->id,
-                    'cartCount' => $cardCount,
-                    'amount' => (string) $amount,
-                    'postPay' => "120,000",
-                    'items' => $itemsForOutput
+                'id' => $cart->id,
+                'cartCount' => $countCart,
+                'amount' => (string) $amount,
+                'postPay' => "120,000",
+                'creditCount' => $credit_count,
+                'checkesCount' => $check_count,
+                'cashCount' => $cash_count,
+                'checkes' => $checkes ?? null,
+                'credit_total_price' => $credit_total_price,
+                'cash_total_price' => $cash_total_price,
+                'items' => $itemsForOutput,
                 ]
                 ,
               'message' => 'محصول حذف شد',

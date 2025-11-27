@@ -12,6 +12,7 @@ class Check extends Model
         'term_days',
         'image',
         'clearing_date',
-        'staus',
+        'status',
+        'order_id'
     ]; 
 }
