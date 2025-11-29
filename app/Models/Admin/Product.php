@@ -180,7 +180,68 @@ class Product extends Model
         }
         return $result;
     }
-    
+
+
+    public function calculateFinalPrice($options = [])
+    {
+        $color = $options['color'] ?? null;
+        $size = $options['size'] ?? null;
+        $brand = $options['brand'] ?? null;
+        $selectedPrice = $options['selectedPrice'] ?? 'cash'; // cash, credit, day_x
+        $count = $options['count'] ?? 1;
+
+        $basePrice = $this->price * $this->ratio;
+        $final = $basePrice;
+
+        // ---------- Color ----------
+        if ($color) {
+            $selected = $this->colors->where('color', $color)->first();
+            if ($selected) {
+                $final += $selected->price * $this->ratio;
+            }
+        }
+
+        // ---------- Size ----------
+        if ($size) {
+            $selected = $this->sizes->where('size', $size)->first();
+            if ($selected) {
+                $final += $selected->price * $this->ratio;
+            }
+        }
+
+        // ---------- Brand ----------
+        if ($brand) {
+            $selected = $this->brands->where('name', $brand)->first();
+            if ($selected) {
+                $final += $selected->price * $this->ratio;
+            }
+        }
+
+        // ---------- USER ----------
+        $user = auth()->user();
+        if ($user) {
+            $category = $user->category;
+
+            // credit price
+            if ($selectedPrice === 'credit') {
+                $final += ($final * $category->percent) / 100;
+            }
+
+            // check price (day_30, day_45 ...)
+            if (str_starts_with($selectedPrice, 'day_')) {
+                $day = (int) str_replace('day_', '', $selectedPrice);
+                $rule = $category->checkRules->where('term_days', $day)->first();
+                if ($rule) {
+                    $final += ($final * $rule->percent) / 100;
+                }
+            }
+        }
+
+        // ---------- COUNT ----------
+        return $final * $count;
+    }
+
+
 
 
 

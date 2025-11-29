@@ -7,10 +7,13 @@ use App\Http\Resources\OrderCollection;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\OrederProductResource;
 use App\Http\Resources\ProductResource;
+use App\Models\Admin\Brand;
 use App\Models\Admin\Cart;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Check;
 use App\Models\Admin\Color;
+use App\Models\Admin\OrderProduct;
+use App\Models\Admin\Size;
 use App\Models\Admin\Order;
 use App\Models\Admin\Product;
 use Illuminate\Support\Str;
@@ -26,7 +29,7 @@ class OrderController extends Controller
     public function index(){
        
         $query = Order::with('products','user')->where('user_id', auth()->user()->id);
-        $orders = $query->paginate(2);
+        $orders = $query->orderBy('id','desc')->paginate(2);
         return new OrderCollection($orders);
     }
 
@@ -34,7 +37,7 @@ class OrderController extends Controller
     {
         
         $query = Order::with('products', 'user');
-        $orders = $query->paginate(10);
+        $orders = $query->orderBy('id', 'desc')->paginate(10);
         
         return new OrderCollection($orders);
     }
@@ -254,11 +257,13 @@ class OrderController extends Controller
         
         $data = [
            
-               
-            'products' => new OrderProductCollection($products),
-            'order'=> [
-                'total_price'=> $total_price,
-            ],
+            'data'=> [
+                'products' => new OrderProductCollection($products),
+                'order' => [
+                        'total_price' => $total_price,
+                ],
+            ],      
+            
             'statusCode' => 200,
             'message' => 'موفقیت آمیز',
             'success' => true,
@@ -354,28 +359,171 @@ class OrderController extends Controller
 
     public function saleProductEdit(Request $request){
         
+        
         $order = Order::findOrFail($request->order_id);
         $product = Product::findOrFail($request->product_id);
-        $selectedColor = $request->input('color') ?? null;
-        $selectedColor = $request->input('color') ?? null;
-        $selectedSize = $request->input('size') ?? null;
-        $selectedBrand = $request->input('brand') ?? null;
-        $selectedCount = $request->input('count') ?? null;
-        
-        if($selectedColor){
-            $color = Color::where('product_id', $product->id)->where('color', $selectedColor)->first();
-            $row = DB::table('order_product')
-                ->where('order_id', $order->id)
-                ->where('product_id', $product->id)
-                ->first();
-            $previous_color = $row->color ?? null;
-            $previous_product_price = $row->price ?? null;    
+        $selectedColor = $request->post('color') ?? null;
+        $selectedSize = $request->post('size') ?? null;
+        $selectedBrand = $request->post('brand') ?? null;
+        $selectedCount = $request->post('count') ?? null;
+
+        $selectedColorGet = $request->get('color') ?? null;
+        $selectedSizeGet = $request->get('size') ?? null;
+        $selectedBrandGet = $request->get('brand') ?? null;
+        $selectedCountGet = $request->get('count') ?? null;
+
+
+        $row = OrderProduct::
+            where('order_id', $order->id)
+            ->where('product_id', $product->id)
+            ->first();
+        $previous_color = $row->color ?? null;
+        $previous_size = $row->size ?? null;
+        $previous_brand = $row->brand ?? null;
+        $previous_product_price = (int)$row->init_price ?? null;
+        $product_count = $row->quantity ?? null;
+        $update = false;
+        $new_product_price = (int) $previous_product_price;
+        $new_color_price= 0;
+        $diffColor = 0;
+        if($selectedColor or $selectedColorGet){
+           
+            
+           
             $previous_color_price = Color::where('product_id',$product->id)->where('color', $previous_color)->value('price');
+            if ($selectedColor)
+                {
+                    $selectedColor = Color::where('product_id', $product->id)->where('color', $selectedColor)->first();
+                }
+            else {
+                    $selectedColor = Color::where('product_id', $product->id)->where('color', $selectedColorGet)->first();
+                }
+            $selected_color_price = $selectedColor->price;
+            $oldPrice = $previous_color_price * $row->ratio * $product_count;
+            $new_color_price = $previous_product_price - ($oldPrice) + ($selected_color_price * $row->ratio * $product_count);
+            $diffColor = -($previous_product_price - $new_color_price);
+            if (request()->getMethod() == 'POST'): $row->color = $selectedColor->color;  $update = true; endif;
             
-            dd($previous_product_price);
             
+            $new_product_price += $diffColor;
+           
+
         }
-        dd($selectedCount);    
+
+      
+        $new_size_price = 0;
+        $diffSize = 0;
+        if ($selectedSize or $selectedSizeGet) {
+            $previous_size_price = Size::where('product_id', $product->id)->where('size', $previous_size)->value('price');
+            if ($selectedSize){
+                $selectedSize = Size::where('product_id', $product->id)->where('size', $selectedSize)->first();
+            }
+            else{
+                $selectedSize = Size::where('product_id', $product->id)->where('size', $selectedSizeGet)->first();
+            }
+            $selected_size_price = $selectedSize->price;
+            $oldPrice = $previous_size_price * $row->ratio * $product_count;
+            $newPrice = $selected_size_price * $row->ratio * $product_count;
+           
+            $new_size_price = $previous_product_price - ($oldPrice) + ($selected_size_price * $row->ratio * $product_count);
+            $diffSize =  -($previous_product_price - $new_size_price);
+
+            if (request()->getMethod() == 'POST') { 
+                $row->size = $selectedSize->size;
+                $update = true;
+            }
+            $new_product_price += $diffSize;
+           
+
+        }
+
+        $new_brand_price = 0;
+        $diffBrand = 0;
+        if ($selectedBrand or $selectedBrandGet) {
+            $previous_brand_price = Brand::where('product_id', $product->id)->where('name', $previous_brand)->value('price');
+            if ($selectedBrand){
+                $selectedBrand = Brand::where('product_id', $product->id)->where('name', $selectedBrand)->first();
+            }
+            else{
+                $selectedBrand = Brand::where('product_id', $product->id)->where('name', $selectedBrandGet)->first();
+            }
+            $selected_brand_price = $selectedBrand->price;
+            $oldPrice = $previous_brand_price * $row->ratio * $product_count;
+            $newPrice = $selected_brand_price * $row->ratio * $product_count;
+            $new_brand_price = $previous_product_price - ($oldPrice) + ($selected_brand_price * $row->ratio * $product_count);
+           
+            $diffBrand =  -($previous_product_price - $new_brand_price);
+           
+            if (request()->getMethod() == 'POST'):$row->brand = $selectedBrand->name;
+                $update = true; endif;
+            $new_product_price += $diffBrand;
+            
+
+        }
+
+
+        if ($selectedCount or $selectedCountGet) {
+
+           
+            if ($selectedCount and request()->getMethod() == 'POST'){
+               
+                $new_total_product_price = $new_product_price * $selectedCount;
+                
+                $row->quantity = $selectedCount;
+                $update = true; 
+            } else {
+                $new_total_product_price = $new_product_price * $selectedCountGet;
+             
+
+            }
+           
+        }
+       
+        
+        if ($update):
+            $row->product_price = $new_product_price;
+            $old_total_product_price = $row->price;
+            $row->price = $new_total_product_price;
+            $row->save();
+            // $new_product_price = $new_product_price + $diffSize + $diffBrand + $diffColor; // for one product 
+            $new_total_price = ($order->total_price - $old_total_product_price + $new_total_product_price);
+            $order->total_price = $new_total_price;
+            $order->save();
+        endif;
+        if (request()->getMethod() == 'GET') {
+            return [
+                'data'=> [
+                    'name'=> $product->name,
+                    'cover'=> $product->cover,
+                    'ratio'=> $product->ratio,
+                    'size'=> $request->post('size'),
+                    'color'=> $request->post('color'),
+                    'brand'=> $request->post('brand'),
+                    'count'=> $request->post('count'),
+                    'product_price'=> $new_product_price,
+                    'product_total_price'=> $new_total_product_price,
+                ],
+                
+                'statusCode' => 200,
+                'success' => true,
+                'message' => 'موفقیت آمیز',
+                'errors' => null
+
+            ];
+        }
+        else{
+            return [
+                'data' => null,
+
+                'statusCode' => 200,
+                'success' => true,
+                'message' => 'موفقیت آمیز',
+                'errors' => null
+
+            ];
+        }
+        
+        
     }
 }
 

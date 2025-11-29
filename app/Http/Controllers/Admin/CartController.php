@@ -137,35 +137,7 @@ class CartController extends Controller
                 $count = $request['count'];
                 $user = auth()->user();
                 $category = $user->category;
-                if ($request['selectedPrice'] == 'credit') {
-                    
-                    $max_credit = $category->max_credit;
-                    $remainder_credit = $max_credit;
-                    $price = $price + (($price * $category->percent) / 100);
-                    $total_price = $price * $count;
-                    
-                    if($price * $count >= $remainder_credit){
-                        
-                    }
-                    else{
-
-                    }    
-
-                    
-                   
-                }
-                if ($check == 'day'){
-                    $check = substr($request['selectedPrice'], 4);
-                    $checkRules = $category->checkRules;
-
-                    $check = $checkRules->where('term_days',$check)->first();
-                    if ($check) {
-                          
-                        $price = $price + (($price * $check->percent) / 100);
-                    }
-                    
-                }
-               
+                
                 $all_request[] = [
                     'id'=> $request['id'],
                     'count'=> $request['count'],
@@ -207,7 +179,7 @@ class CartController extends Controller
                     }
 
                 }
-                
+
                 $brand = $request['brand'] ?? null;
                
                 if ($brand) {
@@ -225,7 +197,36 @@ class CartController extends Controller
                     }
 
                 }
-                $inventory = true;
+
+            if ($request['selectedPrice'] == 'credit') {
+
+                $max_credit = $category->max_credit;
+                $remainder_credit = $max_credit;
+                $price = $price + (($price * $category->percent) / 100);
+                $total_price = $price * $count;
+
+                if ($price * $count >= $remainder_credit) {
+
+                } else {
+
+                }
+
+
+
+            }
+            if ($check == 'day') {
+                $check = substr($request['selectedPrice'], 4);
+                $checkRules = $category->checkRules;
+
+                $check = $checkRules->where('term_days', $check)->first();
+                if ($check) {
+
+                    $price = $price + (($price * $check->percent) / 100);
+                }
+
+            }
+
+            $inventory = true;
                 
                 
                 
@@ -463,6 +464,15 @@ class CartController extends Controller
     public function remove(Request $request){
         $user_id = auth()->user()->id;
         $cart = Cart::where("user_id", $user_id)->first();
+        if (!$cart){
+            return response()->json([
+                'data' => null,
+                'statusCode' => 200,
+                'success' => true,
+                'message' => 'سبد خرید شما خالیست',
+                'errors' => null
+            ]);
+        }
         $cartProducts = $cart->products;
         if ($cartProducts->count() == 0) {
             $cart->delete();
