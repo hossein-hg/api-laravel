@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Admin\Address;
+use App\Models\Admin\Check;
 use App\Models\Admin\UserCategory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -53,6 +54,10 @@ class User extends Authenticatable implements JWTSubject
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function checkes(){
+        return $this->hasMany(Check::class);
     }
 
     public function getJWTIdentifier()

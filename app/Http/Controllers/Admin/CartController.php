@@ -116,11 +116,8 @@ class CartController extends Controller
     {
        
         foreach ($request->all() as $key => $request) {
-
             $validatedValues = ['credit', 'cash'];
-
             $selectedPrice = $request['selectedPrice'] ?? '';
-
             if (!in_array($selectedPrice, $validatedValues) && !preg_match('/^day_\d+$/', $selectedPrice)) {
                 return response()->json([
                     'data' => null,
@@ -141,10 +138,7 @@ class CartController extends Controller
                 $all_request[] = [
                     'id'=> $request['id'],
                     'count'=> $request['count'],
-                ];
-                
-                
-               
+                ];  
                 $color = $request['color'] ?? null;
                 if ($color) {
                 
@@ -173,15 +167,10 @@ class CartController extends Controller
                         if ($selectedSize) {
                             $increasePrice = $selectedSize->price * $product->ratio;
                             $price += $increasePrice;
-
                         }
-
                     }
-
                 }
-
                 $brand = $request['brand'] ?? null;
-               
                 if ($brand) {
                     $productBrands = $product->brands;
                   
@@ -191,13 +180,9 @@ class CartController extends Controller
                         if ($selectedBrand) {
                             $increasePrice = $selectedBrand->price * $product->ratio;
                             $price += $increasePrice;
-
                         }
-
                     }
-
                 }
-
             if ($request['selectedPrice'] == 'credit') {
 
                 $max_credit = $category->max_credit;
@@ -211,8 +196,6 @@ class CartController extends Controller
 
                 }
 
-
-
             }
             if ($check == 'day') {
                 $check = substr($request['selectedPrice'], 4);
@@ -223,22 +206,14 @@ class CartController extends Controller
 
                     $price = $price + (($price * $check->percent) / 100);
                 }
-
             }
-
             $inventory = true;
-                
-                
-                
-
                 $discount = $product->activeOffer()['percent'];
-                
                 if ($discount > 0){
                      $price = $price * ((100 - $discount)/100);
                 }
                 if ($product->warehouseInventory < ($count * $product->ratio)) {
                     $inventory = false;
-                   
             }
             $user_id = auth()->user()->id;
             $cart = Cart::firstOrCreate(
@@ -247,8 +222,9 @@ class CartController extends Controller
             );
             $ratio = $product->ratio;
             $existingProduct = $cart->products()->find($product->id);
+            $total_price_for_product = $count * $price;
             if ($inventory){
-                $total_price_for_product = $count * $price;
+             
 
                 if ($existingProduct) {
                     $cart->products()->updateExistingPivot($product->id, [
@@ -303,11 +279,8 @@ class CartController extends Controller
                         'pay_type' => $request['selectedPrice']
 
                     ]);
-                }
-              
-            }
-            
-            
+                }     
+            }  
             
         }
         $reqMap = collect($all_request)->keyBy('id');
@@ -522,7 +495,7 @@ class CartController extends Controller
         $cart->save();
         $amount = number_format($cart->total_price);
 
-        DB::table('cart_product')->where('cart_id', $cart->id)->where('quantity', 0)->where('inventory', 0)->delete();
+        DB::table('cart_product')->where('cart_id', $cart->id)->where('inventory', 0)->delete();
         DB::table('cart_product')->where('cart_id', $cart->id)->where('quantity', '<>', 0)->update([
             'inventory' => 1
         ]);

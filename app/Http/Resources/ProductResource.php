@@ -25,9 +25,9 @@ class ProductResource extends JsonResource
         $request_brand = request()->query('brand');
         $request_count = request()->query('count');
         
-        $color = request()->query('color') ? Color::where('color', $request_color)->first() : null;
-        $size = request()->query('size') ? Size::where('size', $request_size)->first() : null;
-        $brand = request()->query('brand') ? Brand::where('name', $request_brand)->first() : null;
+        $color = request()->query('color') ? Color::where('color', $request_color)->where('product_id', $this->id)->first() : null;
+        $size = request()->query('size') ? Size::where('size', $request_size)->where('product_id',)->first() : null;
+        $brand = request()->query('brand') ? Brand::where('name', $request_brand)->where('product_id',)->first() : null;
         $color_price = $this->colors->first()?->price * $this->ratio ?? 0;
         $brand_price = $this->brands->first()?->price * $this->ratio ?? 0;
         $size_price = $this->sizes->first()?->price * $this->ratio ?? 0;

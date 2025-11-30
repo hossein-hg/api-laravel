@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ProductsController;
 use App\Http\Controllers\HomeController;
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\JWTOptional;
+use App\Models\Admin\Group;
 use App\Models\Admin\Product;
 use App\Models\Admin\Offer;
 use App\Models\User;
@@ -46,7 +47,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('order/product-delete', [OrderController::class, 'saleProductDelete'])->middleware(CheckRole::class . ':expert-sale');
     Route::match(['get','post'],'order/product-edit', [OrderController::class, 'saleProductEdit'])->middleware(CheckRole::class . ':expert-sale');
     Route::post('order/delete', [OrderController::class, 'delete'])->middleware(CheckRole::class . ':expert-sale');
-
+    Route::post('order/add-product', [OrderController::class, 'addProduct'])->middleware(CheckRole::class . ':expert-sale');
     Route::post('order/upload-checkes', [OrderController::class,'uploadCheckes']);
 
 
@@ -247,6 +248,18 @@ Route::get('get-footer',function(){
     ]);
 });
 Route::get('get-header', function(){
+    $categories = Group::all();
+    $array = [];
+    foreach ($categories as $category){
+        $arr = [
+            'id' => $category->id,
+            'faName' => $category->name,
+            'path' => $category->name,
+
+        ];
+        array_push($array, $arr);
+    }
+   
     return response()->json([
        
         "data" => [
@@ -266,6 +279,7 @@ Route::get('get-header', function(){
                     'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M80 212v236a16 16 0 0 0 16 16h96V328a24 24 0 0 1 24-24h80a24 24 0 0 1 24 24v136h96a16 16 0 0 0 16-16V212"/><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M480 256L266.89 52c-5-5.28-16.69-5.34-21.78 0L32 256m368-77V64h-48v69"/></svg>',
                     'path' => '/',
                 ],
+                
                 [
                     'id' => 2,
                     'faName' => 'لیست محصولات',
@@ -273,6 +287,9 @@ Route::get('get-header', function(){
                     'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" fill-rule="evenodd" d="M464 144c8.837 0 16 7.163 16 16v304c0 8.836-7.163 16-16 16H160c-8.837 0-16-7.164-16-16V160c0-8.837 7.163-16 16-16zm-52 68H212v200h200zm493.333 87.686c6.248 6.248 6.248 16.379 0 22.627l-181.02 181.02c-6.248 6.248-16.378 6.248-22.627 0l-181.019-181.02c-6.248-6.248-6.248-16.379 0-22.627l181.02-181.02c6.248-6.248 16.378-6.248 22.627 0zm-84.853 11.313L713 203.52L605.52 311L713 418.48zM464 544c8.837 0 16 7.164 16 16v304c0 8.837-7.163 16-16 16H160c-8.837 0-16-7.163-16-16V560c0-8.836 7.163-16 16-16zm-52 68H212v200h200zm452-68c8.837 0 16 7.164 16 16v304c0 8.837-7.163 16-16 16H560c-8.837 0-16-7.163-16-16V560c0-8.836 7.163-16 16-16zm-52 68H612v200h200z"/></svg>',
                     'children' => [
                         [
+                            
+                            $array,
+                            
                             'id' => 1,
                             'faName' => 'خودروها',
                             'path' => 'cars',

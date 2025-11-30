@@ -13,6 +13,7 @@ class Check extends Model
         'image',
         'clearing_date',
         'status',
-        'order_id'
+        'order_id',
+        'type'
     ]; 
 }
