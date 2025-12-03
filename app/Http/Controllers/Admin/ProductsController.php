@@ -73,13 +73,14 @@ class ProductsController extends Controller
         }
 
         if ($request->filled('filterMaxPrice')) {
+            
             $maxPrice = (int) $request->input('filterMaxPrice');
-            $query->where('price', '<=', $maxPrice);
+            $query->whereRaw('price * ratio <= ?', [$maxPrice]);
         }
 
         if ($request->filled('filterMinPrice')) {
             $minPrice = (int) $request->input('filterMinPrice');
-            $query->where('price', '>=', $minPrice);
+            $query->whereRaw('price * ratio >= ?', [$minPrice]);
         }
 
         if ($request->filled('filterInventory')) {
@@ -120,7 +121,7 @@ class ProductsController extends Controller
         }
 
         // pagination
-        $products = $query->paginate(perPage: 5);
+        $products = $query->paginate(perPage: 2);
 
         return new ProductCollection($products);
 

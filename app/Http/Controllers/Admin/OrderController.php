@@ -35,10 +35,23 @@ class OrderController extends Controller
 
     public function all()
     {
+        $user = auth()->user();
         
         $query = Order::with('products', 'user');
-        $orders = $query->orderBy('id', 'desc')->paginate(10);
         
+        $orders = $query->orderBy('id', 'desc')->where('status',1)->paginate(10);
+
+        return new OrderCollection($orders);
+    }
+
+    public function financialAll()
+    {
+        $user = auth()->user();
+        
+        $query = Order::with('products', 'user');
+
+        $orders = $query->orderBy('id', 'desc')->whereIn('status', [2,3,4])->paginate(10);
+
         return new OrderCollection($orders);
     }
     public function addFromCart(Request $request){
@@ -67,7 +80,7 @@ class OrderController extends Controller
                     'brand' => $item->pivot->brand,
                     'pay_type' => $item->pivot->pay_type,
                     'product_price' => $item->pivot->product_price,
-                    'init_product'=> $item->pivot->product_price,
+                    'init_price'=> $item->pivot->product_price,
                 ];
                 if ($order->products()->where('products.id', $productId)->exists()) {
                     $order->products()->updateExistingPivot($productId, $attributes);
@@ -106,7 +119,7 @@ class OrderController extends Controller
                 'total_price' => number_format($item->total_price)
             ];
         });
-        dd($checkes);
+        
         $userId = auth()->user()->id;
         $orderUserId = $order->user_id;
         if ($userId != $orderUserId){
@@ -144,6 +157,7 @@ class OrderController extends Controller
             'products.cover',
             'order_product.size',
             'order_product.color',
+            'order_product.brand',
         ])->paginate(10);
 
         
@@ -200,10 +214,11 @@ class OrderController extends Controller
         });
 
 
-
+       
         $products = $order->products()->withPivot('quantity')->join('groups', 'products.group_id', '=', 'groups.id')->with('category')->select([
             'order_product.quantity',
             'order_product.size',
+            'order_product.brand',
             'order_product.color',
             'order_product.product_price',
             'order_product.price as total_price',
@@ -216,9 +231,74 @@ class OrderController extends Controller
             
         ])->with('sizes','brands','colors')->paginate(2);
 
-            
+       
         $address = $user->addresses->where('status',1)->first() ?? null;
+       
+        $data = [
+            'data' => [
+                'creditCount' => $credit_count,
+                'checkesCount' => $check_count,
+                'cashCount' => $cash_count,
+                'checkes' => $checkes ?? null,
+                'credit_total_price' => $credit_total_price,
+                'cash_total_price' => $cash_total_price,
+                'order' => new OrderResource($order),
+                'products' => new OrderProductCollection($products),
+                'user' => [
+                    'name' => $user->name ?? '',
+                    'mobile' => $user->phone ?? '',
+                    'address' => $address ? new AddressResource($address) : null,
+                ]
+            ],
+            'statusCode' => 200,
+            'message' => 'موفقیت آمیز',
+            'success' => true,
+            'errors' => null,
+        ];
+        return response()->json($data);
 
+    }
+
+    public function financialShow(Order $order){
+        $user = $order->user;
+
+        $credit_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->count();
+        $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
+        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
+        $cash_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->sum('price'));
+        $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
+            ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
+            ->groupBy('pay_type')
+            ->get();
+        $checkes = $result->map(function ($item) {
+            return [
+
+                'pay_type' => $item->pay_type,
+                'total_price' => number_format($item->total_price)
+            ];
+        });
+
+
+
+        $products = $order->products()->withPivot('quantity')->join('groups', 'products.group_id', '=', 'groups.id')->with('category')->select([
+            'order_product.quantity',
+            'order_product.size',
+            'order_product.brand',
+            'order_product.color',
+            'order_product.product_price',
+            'order_product.price as total_price',
+            'products.name',
+            'products.price',
+            'products.id',
+            'products.ratio',
+            'products.cover',
+            'groups.name as category_name'
+
+        ])->with('sizes', 'brands', 'colors')->paginate(2);
+
+
+        $address = $user->addresses->where('status', 1)->first() ?? null;
 
         $data = [
             'data' => [
@@ -233,7 +313,7 @@ class OrderController extends Controller
                 'user' => [
                     'name' => $user->name ?? '',
                     'mobile' => $user->phone ?? '',
-                    'address' => new AddressResource($address),
+                    'address' => $address ? new AddressResource($address) : null,
                 ]
             ],
             'statusCode' => 200,
@@ -307,6 +387,7 @@ class OrderController extends Controller
     }
 
     public function uploadCheckes(UploadCheckRequest $request){
+        
         $payType = $request->input(key: 'pay_type');
         $user = auth()->user();
         $userCategoryId = $user->category->id;
@@ -335,6 +416,8 @@ class OrderController extends Controller
                 
                 'data' => [
                     'url' => 'https://files.epyc.ir/' . $relativePath,
+                    'term_days'=> $check->term_days,
+                    'type'=> 'check_image',
                 ],
                 'statusCode' => 200,
                 'success' => true,
@@ -368,6 +451,8 @@ class OrderController extends Controller
                 
                 'data' => [
                     'url' => 'https://files.epyc.ir/' . $relativePath,
+                    'term_days' => $check->term_days,
+                    'type' => 'check_submit_image',
                 ],
                 'statusCode' => 200,
                 'success' => true,
@@ -405,10 +490,13 @@ class OrderController extends Controller
         $previous_brand = $row->brand ?? null;
         $previous_product_price = (int)$row->init_price ?? null;
         $product_count = $row->quantity ?? null;
+        $product_type = $row->pay_type;
         $update = false;
         $new_product_price = (int) $previous_product_price;
+
         $new_color_price= 0;
         $diffColor = 0;
+        $selectedColorObj = null;
         if($selectedColor or $selectedColorGet){
            
             
@@ -416,16 +504,16 @@ class OrderController extends Controller
             $previous_color_price = Color::where('product_id',$product->id)->where('color', $previous_color)->value('price');
             if($previous_color_price){
                 if ($selectedColor) {
-                    $selectedColor = Color::where('product_id', $product->id)->where('color', $selectedColor)->first();
+                    $selectedColorObj = Color::where('product_id', $product->id)->where('color', $selectedColor)->first();
                 } else {
-                    $selectedColor = Color::where('product_id', $product->id)->where('color', $selectedColorGet)->first();
+                    $selectedColorObj = Color::where('product_id', $product->id)->where('color', $selectedColorGet)->first();
                 }
-                $selected_color_price = $selectedColor->price;
+                $selected_color_price = $selectedColorObj->price;
                 $oldPrice = $previous_color_price * $row->ratio * $product_count;
                 $new_color_price = $previous_product_price - ($oldPrice) + ($selected_color_price * $row->ratio * $product_count);
                 $diffColor = -($previous_product_price - $new_color_price);
                 if (request()->getMethod() == 'POST'):
-                    $row->color = $selectedColor->color;
+                    $row->color = $selectedColorObj->color;
                     $update = true;
                 endif;
 
@@ -440,16 +528,17 @@ class OrderController extends Controller
       
         $new_size_price = 0;
         $diffSize = 0;
+        $selectedSizeObj = null;
         if ($selectedSize or $selectedSizeGet) {
             $previous_size_price = Size::where('product_id', $product->id)->where('size', $previous_size)->value('price');
             if($previous_size_price){
                 if ($previous_size_price) {
                     if ($selectedSize) {
-                        $selectedSize = Size::where('product_id', $product->id)->where('size', $selectedSize)->first();
+                        $selectedSizeObj = Size::where('product_id', $product->id)->where('size', $selectedSize)->first();
                     } else {
-                        $selectedSize = Size::where('product_id', $product->id)->where('size', $selectedSizeGet)->first();
+                        $selectedSizeObj = Size::where('product_id', $product->id)->where('size', $selectedSizeGet)->first();
                     }
-                    $selected_size_price = $selectedSize->price;
+                    $selected_size_price = $selectedSizeObj->price;
                     $oldPrice = $previous_size_price * $row->ratio * $product_count;
                     $newPrice = $selected_size_price * $row->ratio * $product_count;
 
@@ -457,7 +546,7 @@ class OrderController extends Controller
                     $diffSize = -($previous_product_price - $new_size_price);
 
                     if (request()->getMethod() == 'POST') {
-                        $row->size = $selectedSize->size;
+                        $row->size = $selectedSizeObj->size;
                         $update = true;
                     }
                     $new_product_price += $diffSize;
@@ -471,22 +560,23 @@ class OrderController extends Controller
 
         $new_brand_price = 0;
         $diffBrand = 0;
+        $selectedBrandObj = null;
         if ($selectedBrand or $selectedBrandGet) {
             $previous_brand_price = Brand::where('product_id', $product->id)->where('name', $previous_brand)->value('price');
             if ($selectedBrand){
-                $selectedBrand = Brand::where('product_id', $product->id)->where('name', $selectedBrand)->first();
+                $selectedBrandObj = Brand::where('product_id', $product->id)->where('name', $selectedBrand)->first();
             }
             else{
-                $selectedBrand = Brand::where('product_id', $product->id)->where('name', $selectedBrandGet)->first();
+                $selectedBrandObj = Brand::where('product_id', $product->id)->where('name', $selectedBrandGet)->first();
             }
-            $selected_brand_price = $selectedBrand->price;
+            $selected_brand_price = $selectedBrandObj->price;
             $oldPrice = $previous_brand_price * $row->ratio * $product_count;
             $newPrice = $selected_brand_price * $row->ratio * $product_count;
             $new_brand_price = $previous_product_price - ($oldPrice) + ($selected_brand_price * $row->ratio * $product_count);
            
             $diffBrand =  -($previous_product_price - $new_brand_price);
            
-            if (request()->getMethod() == 'POST'):$row->brand = $selectedBrand->name;
+            if (request()->getMethod() == 'POST'):$row->brand = $selectedBrandObj->name;
                 $update = true; endif;
             $new_product_price += $diffBrand;
             
@@ -494,10 +584,11 @@ class OrderController extends Controller
         }
 
         $new_total_product_price = $new_product_price;
+        $inventory = false;
         
         if ($selectedCount or $selectedCountGet) {
-           
-           
+            
+            
             if ($selectedCount and request()->getMethod() == 'POST'){
                
                 $new_total_product_price = $new_product_price * $selectedCount;
@@ -505,6 +596,9 @@ class OrderController extends Controller
                 $row->quantity = $selectedCount;
                 $update = true; 
             } else {
+
+                $inventory = $selectedCountGet * $product->ratio > $product->warehouseInventory ? true : false;
+                
                 $new_total_product_price = $new_product_price * $selectedCountGet;
                 
 
@@ -512,15 +606,19 @@ class OrderController extends Controller
             
            
         }
-       
-       
+        
+        $new_price = price($product,$selectedColorObj, $selectedBrandObj, $selectedSizeObj,$product_type,$selectedCountGet);
+  
+      
         if ($update):
-            $row->product_price = $new_product_price;
+            $row->product_price = $new_price['number_one_product'];
             $old_total_product_price = $row->price;
-            $row->price = $new_total_product_price;
+            $row->price = $new_price['number_total_product_price'];
             $row->save();
             // $new_product_price = $new_product_price + $diffSize + $diffBrand + $diffColor; // for one product 
-            $new_total_price = ($order->total_price - $old_total_product_price + $new_total_product_price);
+            $new_total_price = ($order->total_price - $old_total_product_price + $new_price['number_total_product_price']);
+            
+
             $order->total_price = $new_total_price;
             $order->save();
         endif;
@@ -530,16 +628,22 @@ class OrderController extends Controller
                     'name'=> $product->name,
                     'cover'=> $product->cover,
                     'ratio'=> $product->ratio,
-                    'size'=> $request->post('size'),
-                    'color'=> $request->post('color'),
-                    'brand'=> $request->post('brand'),
-                    'count'=> $request->post('count'),
+                    'size'=> $request->query('size'),
+                    'color'=> $request->query('color'),
+                    'brand'=> $request->query('brand'),
+                    'count'=> $request->query('count'),
                     'colors'=> $product->colors->pluck('color'),
                     'brands'=> $product->brands->pluck('name'),
                     'sizes'=> $product->sizes->pluck('size'),
                     'categoryName'=> $product->group->name ?? '',
-                    'product_price'=> number_format($new_product_price),
-                    'product_total_price'=> number_format($new_total_product_price),
+                    'selected_count'=> $product_count,
+                    'selected_color'=> $previous_color,
+                    'selected_brand'=> $previous_brand,
+                    'selected_size'=> $previous_size,
+                    'product_price'=> $new_price['one_product'],
+                    'product_total_price'=> $new_price['total_price'],
+                    'alertMessage'=> $inventory ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
+
                 ],
 
                 'statusCode' => 200,
@@ -566,169 +670,116 @@ class OrderController extends Controller
 
     public function addProduct(Request $request){
         
-            $validatedValues = ['credit', 'cash'];
-            $selectedPrice = $request['selectedPrice'] ?? '';
-            if (!in_array($selectedPrice, $validatedValues) && !preg_match('/^day_\d+$/', $selectedPrice)) {
-                return response()->json([
-                    'data' => null,
-                    'statusCode' => 404,
-                    'success' => false,
-                    'message' => 'مقدار وارد شده صحیح نیست!',
-                    'errors' => null
-                ]);
+        $product = Product::findOrFail($request->id);
+        
+        $count = $request->count;
+        $color = $request->color ?? null;
+        $size = $request->size ?? null;
+        $brand = $request->brand ?? null;
+        $order = Order::findOrFail($request->order_id);
+        $validatedValues = ['credit', 'cash'];
+
+        $existingProduct = $order->products()->find($product->id);
+        $exist = $existingProduct ? true : false;
+        $user = $order->user;
+        $category = $user->category;
+        $price = $product->price * $product->ratio;
+        $all_request[] = [
+            'id' => $request->id,
+            'count' => $request->count,
+        ];
+
+        $productColors = $product->colors;
+        $selectedColor = null;
+        if ($color) {
+            if ($productColors) {
+                $selectedColor = $productColors->where('color', $color)->first();  
             }
-            $check = substr($request['selectedPrice'], 0, 3);
-            $product = Product::findOrFail($request['id']);
+        }
 
-            $price = $product->price * $product->ratio;
-            $count = $request['count'];
-            $user = auth()->user();
-            $category = $user->category;
-
-            $all_request[] = [
-                'id' => $request['id'],
-                'count' => $request['count'],
-            ];
-            $color = $request['color'] ?? null;
-            if ($color) {
-
-                $productColors = $product->colors;
-
-                if ($productColors) {
-
-                    $selectedColor = $productColors->where('color', $color)->first();
-
-                    if ($selectedColor) {
-                        $increasePrice = $selectedColor->price * $product->ratio;
-                        $price += $increasePrice;
-
-
-                    }
-
-                }
-
+        $productSizes = $product->sizes;
+        $selectedSize = null;
+        if ($size) {
+            if ($productSizes) {
+                $selectedSize = $productSizes->where('size', $size)->first();
             }
-
-            $size = $request['size'] ?? null;
-            if ($size) {
-                $productSizes = $product->sizes;
-                if ($productSizes) {
-                    $selectedSize = $productSizes->where('size', $size)->first();
-                    if ($selectedSize) {
-                        $increasePrice = $selectedSize->price * $product->ratio;
-                        $price += $increasePrice;
-                    }
-                }
+        }
+        $productBrands = $product->brands;
+        $selectedBrand = null;
+        if ($brand) {
+            if ($productBrands) {
+                $selectedBrand = $productBrands->where('name', $brand)->first();
             }
-            $brand = $request['brand'] ?? null;
-            if ($brand) {
-                $productBrands = $product->brands;
-
-                if ($productBrands) {
-                    $selectedBrand = $productBrands->where('name', $brand)->first();
-
-                    if ($selectedBrand) {
-                        $increasePrice = $selectedBrand->price * $product->ratio;
-                        $price += $increasePrice;
-                    }
-                }
-            }
-            if ($request['selectedPrice'] == 'credit') {
-
-                $max_credit = $category->max_credit;
-                $remainder_credit = $max_credit;
-                $price = $price + (($price * $category->percent) / 100);
-                $total_price = $price * $count;
-
-                if ($price * $count >= $remainder_credit) {
-
-                } else {
-
-                }
-
-            }
-            if ($check == 'day') {
-                $check = substr($request['selectedPrice'], 4);
-                $checkRules = $category->checkRules;
-
-                $check = $checkRules->where('term_days', $check)->first();
-                if ($check) {
-
-                    $price = $price + (($price * $check->percent) / 100);
-                }
-            }
+        }
+        
+        $selectedPrice = $request['selectedPrice'] ?? 'cash';
+        if ($request->getMethod() == 'POST') {
+        if (!in_array($selectedPrice, $validatedValues) && !preg_match('/^day_\d+$/', $selectedPrice)) {
+            return response()->json([
+                'data' => null,
+                'statusCode' => 404,
+                'success' => false,
+                'message' => 'مقدار وارد شده صحیح نیست!',
+                'errors' => null
+            ]);
+        }
+        }
+        $env = false;    
+        if ($request->getMethod() == 'POST' ){
             $inventory = true;
-            $env = true;
-            $discount = $product->activeOffer()['percent'];
-            if ($discount > 0) {
-                $price = $price * ((100 - $discount) / 100);
-            }
             if ($product->warehouseInventory < ($count * $product->ratio)) {
                 $inventory = false;
-            }
-            $user_id = auth()->user()->id;
-
-            $order = Order::findOrFail($request['order_id']);
-
-            $ratio = $product->ratio;
-            $existingProduct = $order->products()->find($product->id);
-            $total_price_for_product = $count * $price;
-            if ($inventory) {
-                
-                
-
                 if ($existingProduct) {
-                   
+                    $count = $existingProduct->quantity;
+                } else {
+                    $count = 1;
+                }
+            }
+            $new_price = price($product, $selectedColor, $selectedBrand, $selectedSize, $request['selectedPrice'], $count);
+            if ($inventory) {
+                if ($existingProduct) {
+
                 } else {
                     $order->products()->attach($product->id, [
                         'quantity' => $count,
                         'ratio' => $product->ratio,
-                        'price' => $total_price_for_product,
+                        'price' => $new_price['number_total_product_price'],
                         'color' => $color ?? null,
                         'size' => $size ?? null,
                         'brand' => $brand ?? null,
-                        'product_price' => $price,
+                        'product_price' => $new_price['number_one_product'],
+                        'init_price' => $new_price['number_one_product'],
                         'pay_type' => $request['selectedPrice'],
                         'order_id'=> $order->id,
-
                     ]);
                 }
-
             } else {
                 if ($existingProduct) {
 
-                    // $cart->products()->attach($product->id, [
-                    //     'quantity' => 0,
-                    //     'price' => 0,
-                    //     'inventory'=> 0   
-                    // ]);
-                   
+                    $order->products()->updateExistingPivot($product->id, [
+                        'inventory' => 0,
+                        'pay_type' => $request['selectedPrice']
+                    ]);
                 } else {
                     $env = false;
                     $order->products()->attach($product->id, [
                         'quantity' => 1,
-                        'price' => $price,
-                        
+                        'price' => $new_price['number_total_product_price'],
                         'ratio' => $product->ratio,
                         'inventory' => 1,
                         'color' => $color ?? null,
                         'size' => $size ?? null,
-                        'product_price' => $price,
+                        'product_price' => $new_price['number_one_product'],
+                        'init_price' => $new_price['number_one_product'],
                         'pay_type' => $request['selectedPrice'],
                         'order_id'=> $order->id,
                     ]);
                 }
             }
-
-        
         $reqMap = collect($all_request)->keyBy('id');
         $items = $order->products->map(function ($product, $index) use ($reqMap,$env) {
-            // dd($index);
             $count = $product->pivot->quantity;
-
             $inventory = $product->pivot->inventory;
-            
-
             $total_price = $product->pivot->price;
             $color = $product->pivot->color;
 
@@ -758,7 +809,6 @@ class OrderController extends Controller
                 "alertMessage" => $env  ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
             ];
         });
-
 
         $orderCount = $items->where('inventory', '>', 0)->where('count', '<>', 0)->count();
         $order->count = $orderCount;
@@ -850,17 +900,17 @@ class OrderController extends Controller
         return response()->json([
             'data' =>
                 [
-                    'id' => $order->id,
-                    'orderCount' => $countOrder,
-                    'amount' => (string) $amount,
-                    'postPay' => "120,000",
-                    'creditCount' => $credit_count,
-                    'checkesCount' => $check_count,
-                    'cashCount' => $cash_count,
-                    'checkes' => $checkes ?? null,
-                    'credit_total_price' => $credit_total_price,
-                    'cash_total_price' => $cash_total_price,
-                    'items' => $itemsForOutput,
+                    // 'id' => $order->id,
+                    // 'orderCount' => $countOrder,
+                    // 'amount' => (string) $amount,
+                    // 'postPay' => "120,000",
+                    // 'creditCount' => $credit_count,
+                    // 'checkesCount' => $check_count,
+                    // 'cashCount' => $cash_count,
+                    // 'checkes' => $checkes ?? null,
+                    // 'credit_total_price' => $credit_total_price,
+                    // 'cash_total_price' => $cash_total_price,
+                    // 'items' => $itemsForOutput,
 
                 ]
             ,
@@ -869,6 +919,243 @@ class OrderController extends Controller
             'success' => true,
             'errors' => null
         ]);
+        }
+        else{
+            if ($product->warehouseInventory < ($count * $product->ratio)) {
+
+                $env = true;
+            }
+
+            
+            $selectedSize = $productSizes->where('size', $size)->first();
+            $selectedColor = $productColors->where('color', $color)->first();
+            $selectedBrand = $productBrands->where('name', $brand)->first();
+            $selectedPrice = $request['selectedPrice'] ?? 'cash';
+            $pricess = price($product, $selectedColor, $selectedBrand, $selectedSize, $selectedPrice, $count);
+            
+            if ($selectedPrice){
+                if (!in_array($selectedPrice, $validatedValues) && !preg_match('/^day_\d+$/', $selectedPrice)) {
+                    return response()->json([
+                        'data' => null,
+                        'statusCode' => 404,
+                        'success' => false,
+                        'message' => 'مقدار وارد شده صحیح نیست!',
+                        'errors' => null
+                    ]);
+                }
+                
+                
+               
+                // $total_product_price = 
+            }
+            
+            
+
+            return [
+                'data' => [
+                    'name' => $product->name,
+                    'cover' => $product->cover,
+                    'ratio' => $product->ratio,
+                    'discount' => $product->activeOffer()['percent'],
+                    'size' => $request->query('size'),
+                    'color' => $request->query('color'),
+                    'brand' => $request->query('brand'),
+                    'count' => $request->query('count'),
+                    'colors' => $product->colors->pluck('color'),
+                    'brands' => $product->brands->pluck('name'),
+                    'inventory'=> $product->inventory,
+                    'existInOrder'=> $exist ? 1 : 0,
+                    'sizes' => $product->sizes->pluck('size'),
+                    'categoryName' => $product->group->name ?? '',
+                    'product_price' => $pricess['prices'],
+                    'old_product_price' => $pricess['oldPrices'],
+                    'product_total_price' => $pricess['total_price'],
+                    'alertMessage' => $env ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
+                    
+                ],
+
+                'statusCode' => 200,
+                'success' => true,
+                'message' => 'موفقیت آمیز',
+                'errors' => null
+
+            ];
+            
+
+        }
+
+        
+    }
+
+    public function changeStatus(Request $request){
+        $order = Order::findOrFail($request->order_id);
+        $order->description = $request->description;
+        $order->status = $request->status;
+        $order->save();
+        return response()->json([
+            'data' => null,
+            'statusCode' => 200,
+            'success' => true,
+            'message' => 'وضعیت سفارش تغییر کرد',
+            'errors' => null
+        ]);
+    }
+
+
+    public function FinalApproval(Order $order){
+        $user = $order->user;
+
+        $credit_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->count();
+        $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
+        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
+        $cash_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->sum('price'));
+        $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
+            ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
+            ->groupBy('pay_type')
+            ->get();
+
+        
+        $checkes = $result->map(function ($item) {
+            return [
+
+                'pay_type' => $item->pay_type,
+                'total_price' => number_format($item->total_price)
+            ];
+        });
+        $uploadedCheckes = Check::where('order_id', $order->id)->where('user_id',$user->id)->get();
+
+        $uploadedCheckes = $uploadedCheckes->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'image' => 'https://files.epyc.ir/'.$item->image,
+                'type'=> $item->type
+            ];
+        });
+        
+        $products = $order->products()->withPivot('quantity')->join('groups', 'products.group_id', '=', 'groups.id')->with('category')->select([
+            'order_product.quantity',
+            'order_product.size',
+            'order_product.color',
+            'order_product.product_price',
+            'order_product.price as total_price',
+            'products.name',
+            'products.price',
+            'products.id',
+            'products.ratio',
+            'products.cover',
+            'groups.name as category_name'
+
+        ])->with('sizes', 'brands', 'colors')->paginate(2);
+
+        
+        $address = $user->addresses->where('status', 1)->first() ?? null;
+
+
+        $data = [
+            'data' => [
+                'creditCount' => $credit_count,
+                'checkesCount' => $check_count,
+                'cashCount' => $cash_count,
+                'checkes' => $checkes ?? null,
+                'credit_total_price' => $credit_total_price,
+                'cash_total_price' => $cash_total_price,
+                'order' => new OrderResource($order),
+                'products' => new OrderProductCollection($products),
+                'uploadedCheckes'=> $uploadedCheckes,
+                'user' => [
+                    'name' => $user->name ?? '',
+                    'mobile' => $user->phone ?? '',
+                    'address' => $address ? new AddressResource($address) : null,
+                ]
+            ],
+            'statusCode' => 200,
+            'message' => 'موفقیت آمیز',
+            'success' => true,
+            'errors' => null,
+        ];
+        return response()->json($data);
+    }
+
+    public function initialApproval(Order $order){
+        $user = $order->user;
+       
+        $credit_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->count();
+        $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
+        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
+        $check_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE','%day_%')->sum('price'));
+        
+        $cash_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->sum('price'));
+        $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
+            ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
+            ->groupBy('pay_type')
+            ->get();
+
+
+        $checkes = $result->map(function ($item) {
+            return [
+
+                'pay_type' => $item->pay_type,
+                'total_price' => number_format($item->total_price)
+            ];
+        });
+        $uploadedCheckes = Check::where('order_id', $order->id)->where('user_id', $user->id)->get();
+
+        $uploadedCheckes = $uploadedCheckes->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'image' => 'https://files.epyc.ir/' . $item->image,
+                'type' => $item->type
+            ];
+        });
+
+        $products = $order->products()->withPivot('quantity')->join('groups', 'products.group_id', '=', 'groups.id')->with('category')->select([
+            'order_product.quantity',
+            'order_product.size',
+            'order_product.color',
+            'order_product.pay_type',
+            'order_product.product_price',
+            'order_product.price as total_price',
+            'products.name',
+            'products.price',
+            'products.id',
+            'products.ratio',
+            'products.cover',
+            'groups.name as category_name'
+
+        ])->with('sizes', 'brands', 'colors')->paginate(2);
+
+
+        $address = $user->addresses->where('status', 1)->first() ?? null;
+
+        $data = [
+            'data' => [
+                'creditCount' => $credit_count,
+                'checkesCount' => $check_count,
+                'checkTotalPrice'=> $check_total_price,
+                'cashCount' => $cash_count,
+                'checkes' => $checkes ?? null,
+                'credit_total_price' => $credit_total_price,
+                'cash_total_price' => $cash_total_price,
+                'order' => new OrderResource($order),
+                'products' => new OrderProductCollection($products),
+                'uploadedCheckes' => $uploadedCheckes,
+                'user' => [
+                    'name' => $user->name ?? '',
+                    'mobile' => $user->phone ?? '',
+                    'category'=> $user->category->name ?? "1",
+                    'remaining_credit'=> number_format(2000000),
+                    'address' => $address ? new AddressResource($address) : null,
+                ]
+            ],
+            'statusCode' => 200,
+            'message' => 'موفقیت آمیز',
+            'success' => true,
+            'errors' => null,
+        ];
+        return response()->json($data);
+
     }
 }
 

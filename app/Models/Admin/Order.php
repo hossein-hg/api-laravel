@@ -27,6 +27,7 @@ class Order extends Model
         'count',
         'status',
         'total_price',
-        'cart_id'
+        'cart_id',
+        'description'
     ];
 }

@@ -13,12 +13,15 @@ class CheckRole
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next, $role): Response
+    public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        // dd('hi');
+        
         $user = auth()->user();
         $userRole = $user->getJWTCustomClaims()['role'] ?? null;
-        if ($userRole != $role) {
+        
+        
+        
+        if (!in_array($userRole, $roles)) {
             return response()->json([
                 'data' => null,
                 'statusCode' => 403,

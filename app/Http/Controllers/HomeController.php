@@ -42,6 +42,7 @@ class HomeController extends Controller
                     ->where('end_time', '>', $now);
             })
             ->orderBy('id', 'desc')
+            ->where('inventory',1)
             ->take(5)
             ->get();
         $data = [

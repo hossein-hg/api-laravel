@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use App\Models\Log;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+require_once __DIR__ . '/../app/Helpers/helper.php';
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
        

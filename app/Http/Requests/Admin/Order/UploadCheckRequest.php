@@ -22,9 +22,11 @@ class UploadCheckRequest extends FormRequest
      */
     public function rules(): array
     {
+        
         return [
             'check_image' => ['image','mimes:jpeg,png,jpg','max:5240','required_without:check_submit_image'],
             'check_submit_image' => ['image','mimes:jpeg,png,jpg','max:5240','required_without:check_image'],
+            'order_id'=> ['required','exists:orders,id'],
         ];
     }
 
@@ -50,6 +52,8 @@ class UploadCheckRequest extends FormRequest
             'check_submit_image.image' => 'نوع فایل باید image باشد.',
             'check_image.mimes' => 'نوع فایل باید یکی از تایپ های png, jpec, jpg باشد',
             'check_submit_image.mimes' =>'نوع فایل باید یکی از تایپ های png, jpec, jpg باشد',
+            'order_id.required'=> 'آیدی سفارش الزامی است.',
+            'order_id.exists'=> 'چنین سفارشی وجود ندارد.'
         ];
     }
 }

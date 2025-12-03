@@ -114,10 +114,10 @@ class CartController extends Controller
 
     public function update(Request $request)
     {
-       
-        foreach ($request->all() as $key => $request) {
+
+         foreach ($request->all() as  $req) {
             $validatedValues = ['credit', 'cash'];
-            $selectedPrice = $request['selectedPrice'] ?? '';
+            $selectedPrice = $req['selectedPrice'] ?? '';
             if (!in_array($selectedPrice, $validatedValues) && !preg_match('/^day_\d+$/', $selectedPrice)) {
                 return response()->json([
                     'data' => null,
@@ -127,102 +127,74 @@ class CartController extends Controller
                     'errors' => null
                 ]); 
             }
-                $check = substr($request['selectedPrice'], 0, 3);
+        }
+       
+        foreach ($request->all() as $key => $request) {
+            
                 $product = Product::findOrFail($request['id']);
 
-                $price = $product->price * $product->ratio;
                 $count = $request['count'];
-                $user = auth()->user();
-                $category = $user->category;
-                
+
                 $all_request[] = [
                     'id'=> $request['id'],
                     'count'=> $request['count'],
-                ];  
-                $color = $request['color'] ?? null;
-                if ($color) {
-                
-                    $productColors = $product->colors;
-                    
-                    if ($productColors){
-                   
-                        $selectedColor = $productColors->where('color', $color)->first();
-                        
-                        if ($selectedColor) {
-                            $increasePrice = $selectedColor->price * $product->ratio;
-                             $price += $increasePrice;
-                      
+                ]; 
 
-                    }
-                       
-                    }
-                    
+                $color = $request['color'] ?? null;
+                $productColors = $product->colors;
+                $selectedColor = null;
+                if ($color) {
+                        if ($productColors){
+                            $selectedColor = $productColors->where('color', $color)->first();
+                        }
+
                 }
                
                 $size = $request['size'] ?? null;
+                $productSizes = $product->sizes;
+                $selectedSize = null;
                 if ($size) {
-                    $productSizes = $product->sizes;
+                    
                     if ($productSizes) {
-                        $selectedSize = $productSizes->where('size', $size)->first();
-                        if ($selectedSize) {
-                            $increasePrice = $selectedSize->price * $product->ratio;
-                            $price += $increasePrice;
-                        }
+                    $selectedSize = $productSizes->where('size', $size)->first();
+                        
                     }
                 }
                 $brand = $request['brand'] ?? null;
+                $productBrands = $product->brands;
+                $selectedBrand = null;
                 if ($brand) {
-                    $productBrands = $product->brands;
+                    
                   
                     if ($productBrands) {
                         $selectedBrand = $productBrands->where('name', $brand)->first();
-                      
-                        if ($selectedBrand) {
-                            $increasePrice = $selectedBrand->price * $product->ratio;
-                            $price += $increasePrice;
-                        }
                     }
                 }
-            if ($request['selectedPrice'] == 'credit') {
-
-                $max_credit = $category->max_credit;
-                $remainder_credit = $max_credit;
-                $price = $price + (($price * $category->percent) / 100);
-                $total_price = $price * $count;
-
-                if ($price * $count >= $remainder_credit) {
-
-                } else {
-
-                }
-
-            }
-            if ($check == 'day') {
-                $check = substr($request['selectedPrice'], 4);
-                $checkRules = $category->checkRules;
-
-                $check = $checkRules->where('term_days', $check)->first();
-                if ($check) {
-
-                    $price = $price + (($price * $check->percent) / 100);
-                }
-            }
+           
+            
             $inventory = true;
-                $discount = $product->activeOffer()['percent'];
-                if ($discount > 0){
-                     $price = $price * ((100 - $discount)/100);
-                }
-                if ($product->warehouseInventory < ($count * $product->ratio)) {
-                    $inventory = false;
-            }
+               
+                
             $user_id = auth()->user()->id;
             $cart = Cart::firstOrCreate(
                 ['user_id' => $user_id],
                 ['count' => 0, 'total_price' => 0]
             );
-            $ratio = $product->ratio;
+           
             $existingProduct = $cart->products()->find($product->id);
-            $total_price_for_product = $count * $price;
+            
+                if ($product->warehouseInventory < ($count * $product->ratio)) {
+                    $inventory = false;
+                    if ($existingProduct) {
+                            $count = $existingProduct->quantity;
+                    }
+                    else{
+                        $count = 1;
+                    }
+                }
+           
+            $new_price = price($product, $selectedColor , $selectedBrand , $selectedSize, $request['selectedPrice'], $count);
+            
             if ($inventory){
              
 
@@ -230,22 +202,22 @@ class CartController extends Controller
                     $cart->products()->updateExistingPivot($product->id, [
                         'quantity' => $count,
                         'ratio' => $product->ratio,
-                        'price' => $total_price_for_product, 
+                        'price' => $new_price['number_total_product_price'], 
                         'color'=> $color ?? null,                      
                         'size'=> $size ?? null,
                         'brand' => $brand ?? null,
-                        'product_price' => $price,
+                        'product_price' => $new_price['number_one_product'],
                         'pay_type'=> $request['selectedPrice']                      
                     ]);
                 } else {
                     $cart->products()->attach($product->id, [
                         'quantity' => $count,
                         'ratio' => $product->ratio,
-                        'price' => $total_price_for_product,
+                        'price' => $new_price['number_total_product_price'],
                         'color' => $color ?? null,
                         'size' => $size ?? null,
                         'brand' => $brand ?? null,
-                        'product_price' => $price,
+                        'product_price' => $new_price['number_one_product'],
                         'pay_type' => $request['selectedPrice']
 
                     ]);
@@ -255,27 +227,22 @@ class CartController extends Controller
             else{
                 if ($existingProduct) {
                     
-                    // $cart->products()->attach($product->id, [
-                    //     'quantity' => 0,
-                    //     'price' => 0,
-                    //     'inventory'=> 0   
-                    // ]);
                     $cart->products()->updateExistingPivot($product->id, [
                         'inventory' => 0,
+                        'pay_type' => $request['selectedPrice']
                        
-                        // 'quantity'=>$request['count']
                     ]);
                 }
                 else{
                 
                     $cart->products()->attach($product->id, [
                         'quantity' => 1,
-                        'price' => $price,
+                        'price' => $new_price['number_total_product_price'],
                         'ratio' => $product->ratio,
                         'inventory' => 0,
                         'color' => $color ?? null,
                         'size' => $size ?? null,
-                        'product_price' => $price,
+                        'product_price' => $new_price['number_one_product'],
                         'pay_type' => $request['selectedPrice']
 
                     ]);
@@ -283,6 +250,7 @@ class CartController extends Controller
             }  
             
         }
+        
         $reqMap = collect($all_request)->keyBy('id');
         
         // آماده سازی خروجی محصولات
@@ -344,9 +312,7 @@ class CartController extends Controller
                 'alertMessage' => $i['alertMessage'],
             ];
         })->values();
-        // DB::table('cart_product')->where('product_id', $product->id)->update([
-        //     'inventory' => 1
-        // ]);
+
 
 
 
@@ -394,7 +360,7 @@ class CartController extends Controller
         $cart->save();
 
         $cart->total_price == 0 ? $cart->delete() : null;
-
+       
         $cart = $cart->fresh();
         
         if (!$cart){

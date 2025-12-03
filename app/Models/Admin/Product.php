@@ -120,7 +120,7 @@ class Product extends Model
             $endTime = Carbon::parse($offer->end_time);  
             $now = Carbon::now();
             
-           if ($startTime < $now && $now < $endTime) {
+           if ($startTime < $now && $now < $endTime && $this->inventory == 1) {
                 $countDown = strtotime($offer->end_time) * 1000;
                     return [
                         'percent'=>$offer->percent,

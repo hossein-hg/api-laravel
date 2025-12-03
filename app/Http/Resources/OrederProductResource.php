@@ -14,11 +14,14 @@ class OrederProductResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        
         return [
             'id' => $this->id,
             'name' => trim($this->name),
             'count'=>$this->quantity,
             'size'=>$this->size,
+            'brand'=>$this->brand,
+            'pay_type'=>$this->pay_type,
             'color'=>$this->color,
             'price'=>number_format($this->product_price),
             'total_price'=>number_format($this->total_price),
