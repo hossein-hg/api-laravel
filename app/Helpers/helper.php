@@ -60,18 +60,15 @@ use App\Models\Admin\Size;
         $prices['cash'] = $product->activeOffer()['percent'] > 0 ? $price * ((100 - $product->activeOffer()['percent']) / 100) : $price;
         
         $prices['credit'] = $price + (($price * $category->percent) / 100);
-        $oldPrices['credit'] = $product->activeOffer()['percent'] > 0 ? $price + (($price * $category->percent) / 100) : 0;
+        $oldPrices['credit'] = $product->activeOffer()['percent'] > 0 ? $price  : 0;
         $prices['credit'] = $prices['cash'] + (($prices['cash'] * $category->percent) / 100);
         $prices['checkes'] = $checksList;
         if (isset($prices['checkes'][$selectedType])) {
             $total_product_price = $count ?  $prices['checkes'][$selectedType] * $count :  $prices['checkes'][$selectedType];
-            $one_product =  $prices['checkes'][$selectedType];
-            
-               
+            $one_product =  $prices['checkes'][$selectedType];     
         }
         $oldPrices['checkes'] = $checksListOld;
         if ($selectedType == 'credit') {
-
             $total_product_price = $count ? $prices['credit'] * $count : $prices['credit'];
             $one_product = $prices['credit'];
         }

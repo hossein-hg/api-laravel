@@ -18,6 +18,7 @@ class OrderResource extends JsonResource
         return [
             'id' => $this->id,
             'created_at' => $this->created_at->format('Y-m-d H:i:s') ?? '',
+            'updated_at' => $this->updated_at?->format('Y-m-d H:i:s') ?? '',
             'order_status' => $this->status,
             'payment_status' => $this->payment_status,
             'total_price' => number_format((int) $this->total_price),

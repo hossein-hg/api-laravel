@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\Admin\AddressController;
 use App\Http\Controllers\Admin\CartController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductsController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\WaybillController;
 use App\Http\Controllers\HomeController;
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\JWTOptional;
@@ -47,12 +50,19 @@ Route::middleware('auth:api')->group(function () {
     // ->middleware(CheckRole::class.':expert-financial')
     ;
 
+    Route::get('orders/warehouse-all', [OrderController::class, 'warehouseAll'])
+        // ->middleware(CheckRole::class.':expert-financial')
+    ;
+
     Route::get('order/details/{order}', [OrderController::class, 'show']);
     Route::get('order/sale-details/{order}', [OrderController::class, 'saleShow'])
     // ->middleware(CheckRole::class . ':expert-sale')
     ;
     Route::get('order/financial-details/{order}', [OrderController::class, 'financialShow'])
     // ->middleware(CheckRole::class . ':expert-financial')
+    ;
+    Route::get('order/warehouse-details/{order}', [OrderController::class, 'warehouseShow'])
+        // ->middleware(CheckRole::class . ':expert-financial')
     ;
     Route::post('order/product-delete', [OrderController::class, 'saleProductDelete'])
     // ->middleware(CheckRole::class . ':expert-sale')
@@ -77,6 +87,36 @@ Route::middleware('auth:api')->group(function () {
     Route::get('order/initial-approval/{order}', [OrderController::class, 'initialApproval'])
         // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
     ;
+
+
+    Route::post('download-image', [OrderController::class,'download']);
+    Route::post('orders/waybill/store', [WaybillController::class, 'store'])
+        // ->middleware(CheckRole::class.':expert-financial')
+    ;
+
+    Route::get('user/addresses', [AddressController::class, 'index'])
+        // ->middleware(CheckRole::class.':expert-financial')
+    ;
+
+    Route::post('user/address/store', [AddressController::class, 'store'])
+        // ->middleware(CheckRole::class.':expert-financial')
+    ;
+
+    Route::post('user/address/update', [AddressController::class, 'update'])
+        // ->middleware(CheckRole::class.':expert-financial')
+    ;
+
+    Route::post('user/address/delete', [AddressController::class, 'delete'])
+        // ->middleware(CheckRole::class.':expert-financial')
+    ;
+
+    Route::prefix('/admin')->group(function () {
+        Route::get('users', [UserController::class, 'index'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+    });
+    
+
 
 
 });
@@ -118,7 +158,7 @@ Route::get('test',function(){
 
     // $user = User::findOrFail(17);
     // dd($user->category->checkRules);
-    price();
+    
     
     
 });
@@ -302,24 +342,21 @@ Route::get('get-header', function(){
     $output = [];
 
     foreach ($groups as $group) {
+        $products = $group->products;
+        $children = $products->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'faName' => $product->name,
+                'path' => $product->slug ?? $product->name, // اگر slug دارید، استفاده کنید
+            ];
+        })->toArray();
         $output[] = [
             'id' => $group->id,
             'faName' => $group->name,
             'path' => $group->name,
             'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" fill-rule="evenodd" d="M464 144c8.837 0 16 7.163 16 16v304c0 8.836-7.163 16-16 16H160c-8.837 0-16-7.164-16-16V160c0-8.837 7.163-16 16-16zm-52 68H212v200h200zm493.333 87.686c6.248 6.248 6.248 16.379 0 22.627l-181.02 181.02c-6.248 6.248-16.378 6.248-22.627 0l-181.019-181.02c-6.248-6.248-6.248-16.379 0-22.627l181.02-181.02c6.248-6.248 16.378-6.248 22.627 0zm-84.853 11.313L713 203.52L605.52 311L713 418.48zM464 544c8.837 0 16 7.164 16 16v304c0 8.837-7.163 16-16 16H160c-8.837 0-16-7.163-16-16V560c0-8.836 7.163-16 16-16zm-52 68H212v200h200zm452-68c8.837 0 16 7.164 16 16v304c0 8.837-7.163 16-16 16H560c-8.837 0-16-7.163-16-16V560c0-8.836 7.163-16 16-16zm-52 68H612v200h200z"/></svg>',
 
-            'children' => [
-                [
-                    'id' => 1,
-                    'faName' => 'سمند',
-                    'path' => 'samand',
-                ],
-                [
-                    'id' => 2,
-                    'faName' => 'پیکان',
-                    'path' => 'peykan',
-                ],
-            ]
+            'children' => $children
         ];
     }
     $categories =  response()->json($output);

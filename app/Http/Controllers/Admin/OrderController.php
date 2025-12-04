@@ -7,7 +7,9 @@ use App\Http\Resources\OrderCollection;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\OrederProductResource;
 use App\Http\Resources\ProductResource;
+use App\Models\Admin\Address;
 use App\Models\Admin\Brand;
+use App\Models\User;
 use App\Models\Admin\Cart;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\Check;
@@ -46,11 +48,20 @@ class OrderController extends Controller
 
     public function financialAll()
     {
-        $user = auth()->user();
-        
+       
         $query = Order::with('products', 'user');
 
         $orders = $query->orderBy('id', 'desc')->whereIn('status', [2,3,4])->paginate(10);
+
+        return new OrderCollection($orders);
+    }
+
+    public function warehouseAll(){
+        
+
+        $query = Order::with('products', 'user');
+
+        $orders = $query->orderBy('id', 'desc')->whereIn('status', [6])->paginate(10);
 
         return new OrderCollection($orders);
     }
@@ -119,7 +130,22 @@ class OrderController extends Controller
                 'total_price' => number_format($item->total_price)
             ];
         });
-        
+        $checkesUploaded = $result->map(function ($item) use ($order) {
+            $uploadedCheckes = Check::where('term_days', $item->pay_type)->where('order_id', $order->id)->get([
+                'image',
+                'type'
+            ])->map(function ($row) {
+                $row->image = 'https://files.epyc.ir/' . $row->image;
+                return $row;
+            });
+            return [
+
+                'pay_type' => $item->pay_type,
+                'total_price' => number_format($item->total_price),
+                'uploadedCheckes' => $uploadedCheckes,
+
+            ];
+        });
         $userId = auth()->user()->id;
         $orderUserId = $order->user_id;
         if ($userId != $orderUserId){
@@ -168,6 +194,7 @@ class OrderController extends Controller
             'data' => [
                 'creditCount' => $credit_count,
                 'checkesCount' => $check_count,
+                'uploadedCheckes'=> $checkesUploaded,
                 'cashCount' => $cash_count,
                 'checkes' => $checkes ?? null,
                 'credit_total_price' => $credit_total_price,
@@ -325,6 +352,71 @@ class OrderController extends Controller
 
     }
 
+    public function warehouseShow(Order $order){
+        $user = $order->user;
+
+        $credit_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->count();
+        $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
+        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
+        $cash_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->sum('price'));
+        $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
+            ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
+            ->groupBy('pay_type')
+            ->get();
+        $checkes = $result->map(function ($item) {
+            return [
+
+                'pay_type' => $item->pay_type,
+                'total_price' => number_format($item->total_price)
+            ];
+        });
+
+
+
+        $products = $order->products()->withPivot('quantity')->join('groups', 'products.group_id', '=', 'groups.id')->with('category')->select([
+            'order_product.quantity',
+            'order_product.size',
+            'order_product.brand',
+            'order_product.color',
+            'order_product.product_price',
+            'order_product.price as total_price',
+            'products.name',
+            'products.price',
+            'products.id',
+            'products.ratio',
+            'products.cover',
+            'groups.name as category_name'
+
+        ])->with('sizes', 'brands', 'colors')->paginate(2);
+
+
+        $address = $user->addresses->where('status', 1)->first() ?? null;
+
+        $data = [
+            'data' => [
+                'creditCount' => $credit_count,
+                'checkesCount' => $check_count,
+                'cashCount' => $cash_count,
+                'checkes' => $checkes ?? null,
+                'credit_total_price' => $credit_total_price,
+                'cash_total_price' => $cash_total_price,
+                'order' => new OrderResource($order),
+                'products' => new OrderProductCollection($products),
+                'user' => [
+                    'name' => $user->name ?? '',
+                    'mobile' => $user->phone ?? '',
+                    'address' => $address ? new AddressResource($address) : null,
+                ]
+            ],
+            'statusCode' => 200,
+            'message' => 'موفقیت آمیز',
+            'success' => true,
+            'errors' => null,
+        ];
+        return response()->json($data);
+    }
+
     public function saleProductDelete(Request $request){
        
         $orderId = $request->order_id;
@@ -397,21 +489,22 @@ class OrderController extends Controller
             $mimeType = $image->getMimeType();
             $extension = explode('/', $mimeType)[1];
             
-            // نام منحصربه‌فرد برای فایل (برای جلوگیری از تداخل)
             $filename = Str::uuid() . '-' . $payType ."-".$user->id. "." . $extension;
             
-            // ذخیره مستقیم در public/images
             $path = $image->move(public_path('images'.DIRECTORY_SEPARATOR.'checkes'), $filename);
             $relativePath = 'images'.DIRECTORY_SEPARATOR.'checkes'.DIRECTORY_SEPARATOR. $filename;
-           
-            $check = Check::create([
-                'category_user_id' => $userCategoryId,
-                'user_id'=> $user->id,
-                'term_days'=> $payType,
-                'image'=> $relativePath,
-                'order_id'=> $request->order_id,
-                'type'=> 'check_image'
-            ]);
+            $check = Check::updateOrCreate(
+                [
+                    'order_id' => $request->order_id,
+                    'term_days' => $payType,
+                    'type' => 'check_image'
+                ],
+                [
+                    'category_user_id' => $userCategoryId,
+                    'user_id' => $user->id,
+                    'image' => $relativePath,
+                ]
+            );
             return response()->json([
                 
                 'data' => [
@@ -438,15 +531,18 @@ class OrderController extends Controller
             $path = $image->move(public_path('images' . DIRECTORY_SEPARATOR . 'checkes'), $filename);
             $relativePath = 'images' . DIRECTORY_SEPARATOR . 'checkes' . DIRECTORY_SEPARATOR . $filename;
 
-            $check = Check::create([
-                'category_user_id' => $userCategoryId,
-                'user_id' => $user->id,
-                'term_days' => $payType,
-                'image' => $relativePath,
-                'status'=> 1,
-                'order_id' => $request->order_id,
-                'type' => 'check_submit_image'    
-            ]);
+            $check = Check::updateOrCreate(
+                [
+                    'order_id' => $request->order_id,
+                    'term_days' => $payType,
+                    'type' => 'check_submit_image'
+                ],
+                [
+                    'category_user_id' => $userCategoryId,
+                    'user_id' => $user->id,
+                    'image' => $relativePath,
+                ]
+            );
             return response()->json([
                 
                 'data' => [
@@ -989,16 +1085,84 @@ class OrderController extends Controller
 
     public function changeStatus(Request $request){
         $order = Order::findOrFail($request->order_id);
-        $order->description = $request->description;
-        $order->status = $request->status;
-        $order->save();
-        return response()->json([
-            'data' => null,
-            'statusCode' => 200,
-            'success' => true,
-            'message' => 'وضعیت سفارش تغییر کرد',
-            'errors' => null
-        ]);
+        $user = User::findOrFail($order->user_id);
+        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        if ($request->status == 4){
+            $address_id = $request->address_id;
+            if (!$address_id) {
+                return response()->json([
+                    'data' => null,
+                    'statusCode' => 500,
+                    'success' => false,
+                    'message' => 'فیلد address_id الزامی است',
+                    'errors' => null
+                ]);
+            }
+            Address::where('user_id',$user->id)->update([
+                'status'=> 0
+            ]);
+            $address = Address::findOrFail($address_id);
+
+            $address->status = 1;
+            $address->save();
+            $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
+                ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
+                ->groupBy('pay_type')
+                ->get();
+            $checkesUploaded = $result->map(function ($item) use ($order) {
+                $uploadedCheckes = Check::where('term_days', $item->pay_type)->where('order_id', $order->id)->get([
+                    'image',
+                    'type'
+                ]);
+                return [
+                    'pay_type' => $item->pay_type,
+                    'total_price' => number_format($item->total_price),
+                    'uploadedCheckes' => $uploadedCheckes,
+
+                ];
+            });
+            $totalUploaded = $checkesUploaded->sum(function ($item) {
+                return $item['uploadedCheckes']->count();
+            });
+            if ($check_count * 2 == $totalUploaded){
+                $order->status = $request->status;
+                $order->save();
+                return response()->json([
+                    'data' => null,
+                    'statusCode' => 200,
+                    'success' => true,
+                    'message' => 'وضعیت سفارش تغییر کرد',
+                    'errors' => null
+                ]);
+            }
+            else{
+                return response()->json([
+                    'data' => null,
+                    'statusCode' => 500,
+                    'success' => false,
+                    'message' => 'خطا',
+                    'errors' => null
+                ]);
+            }
+            
+            
+        }
+        else{
+            $order->description = $request->description;
+            $order->status = $request->status;
+            $order->save();
+            $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+
+            return response()->json([
+                'data' => null,
+                'statusCode' => 200,
+                'success' => true,
+                'message' => 'وضعیت سفارش تغییر کرد',
+                'errors' => null
+            ]);
+        }
+        
+        
     }
 
 
@@ -1014,29 +1178,48 @@ class OrderController extends Controller
             ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
             ->groupBy('pay_type')
             ->get();
-
+        $check_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->sum('price'));
         
         $checkes = $result->map(function ($item) {
+            
             return [
 
                 'pay_type' => $item->pay_type,
-                'total_price' => number_format($item->total_price)
+                'total_price' => number_format($item->total_price),
+               
+
             ];
         });
-        $uploadedCheckes = Check::where('order_id', $order->id)->where('user_id',$user->id)->get();
-
+        $uploadedCheckes = Check::where('order_id', $order->id)->where('user_id', $user->id)->get();
         $uploadedCheckes = $uploadedCheckes->map(function ($item) {
             return [
                 'id' => $item->id,
-                'image' => 'https://files.epyc.ir/'.$item->image,
-                'type'=> $item->type
+                'image' => 'https://files.epyc.ir/' . $item->image,
+                'type' => $item->type
             ];
         });
+        $checkesUploaded = $result->map(function ($item) use ($order) {
+            $uploadedCheckes = Check::where('term_days', $item->pay_type)->where('order_id', $order->id)->get([
+                'image',
+                'type'
+            ])->map(function ($row) {
+                $row->image = 'https://files.epyc.ir/' . $row->image;
+                return $row;
+            });
+            return [
+                'pay_type' => $item->pay_type,
+                'total_price' => number_format($item->total_price),
+                'uploadedCheckes' => $uploadedCheckes,
+
+            ];
+        });
+
         
         $products = $order->products()->withPivot('quantity')->join('groups', 'products.group_id', '=', 'groups.id')->with('category')->select([
             'order_product.quantity',
             'order_product.size',
             'order_product.color',
+            'order_product.pay_type',
             'order_product.product_price',
             'order_product.price as total_price',
             'products.name',
@@ -1057,16 +1240,19 @@ class OrderController extends Controller
                 'creditCount' => $credit_count,
                 'checkesCount' => $check_count,
                 'cashCount' => $cash_count,
+                'checkTotalPrice' => $check_total_price,
                 'checkes' => $checkes ?? null,
                 'credit_total_price' => $credit_total_price,
                 'cash_total_price' => $cash_total_price,
                 'order' => new OrderResource($order),
                 'products' => new OrderProductCollection($products),
-                'uploadedCheckes'=> $uploadedCheckes,
+                'uploadedCheckes'=> $checkesUploaded,
                 'user' => [
                     'name' => $user->name ?? '',
                     'mobile' => $user->phone ?? '',
+                    'category' => $user->category->name ?? "1",
                     'address' => $address ? new AddressResource($address) : null,
+                    'remaining_credit' => number_format(2000000),
                 ]
             ],
             'statusCode' => 200,
@@ -1156,6 +1342,24 @@ class OrderController extends Controller
         ];
         return response()->json($data);
 
+    }
+
+
+    public function download(Request $request){
+        $link = $request->input(key: 'image');
+        $check = Check::where('image',$link)->first() ?? null;
+        if ($check) {
+            return response()->download(
+                public_path($link),
+                basename($link),
+                [
+                    'Content-Type' => 'application/octet-stream',
+                    'Content-Disposition' => 'attachment; filename="' . basename($link) . '"'
+                ]
+            );
+        }
+
+        
     }
 }
 
