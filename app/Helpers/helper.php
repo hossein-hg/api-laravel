@@ -4,7 +4,7 @@ use App\Models\Admin\Color;
 use App\Models\Admin\Product;
 use App\Models\Admin\Size;
  function price($product, $color = null , $brand = null , $size = null, $selectedType = null, $count = null){
-   
+    
     $color_price = $product->colors->first()?->price * $product->ratio ?? 0;
     
     $brand_price = $product->brands->first()?->price * $product->ratio ?? 0;

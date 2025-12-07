@@ -192,7 +192,7 @@ class CartController extends Controller
                         $count = 1;
                     }
                 }
-           
+            
             $new_price = price($product, $selectedColor , $selectedBrand , $selectedSize, $request['selectedPrice'], $count);
             
             if ($inventory){
@@ -203,9 +203,9 @@ class CartController extends Controller
                         'quantity' => $count,
                         'ratio' => $product->ratio,
                         'price' => $new_price['number_total_product_price'], 
-                        'color'=> $color ?? null,                      
-                        'size'=> $size ?? null,
-                        'brand' => $brand ?? null,
+                        'color'=> $selectedColor ? $selectedColor->color : null,                      
+                        'size'=> $selectedSize ? $selectedSize->size  : null,
+                        'brand' => $selectedBrand ? $selectedBrand->name : null,
                         'product_price' => $new_price['number_one_product'],
                         'pay_type'=> $request['selectedPrice']                      
                     ]);
@@ -214,9 +214,9 @@ class CartController extends Controller
                         'quantity' => $count,
                         'ratio' => $product->ratio,
                         'price' => $new_price['number_total_product_price'],
-                        'color' => $color ?? null,
-                        'size' => $size ?? null,
-                        'brand' => $brand ?? null,
+                        'color' => $selectedColor ? $selectedColor->color : null,
+                        'size' => $selectedSize ? $selectedSize->size : null,
+                        'brand' => $selectedBrand ? $selectedBrand->name : null,
                         'product_price' => $new_price['number_one_product'],
                         'pay_type' => $request['selectedPrice']
 
@@ -240,8 +240,9 @@ class CartController extends Controller
                         'price' => $new_price['number_total_product_price'],
                         'ratio' => $product->ratio,
                         'inventory' => 0,
-                        'color' => $color ?? null,
-                        'size' => $size ?? null,
+                        'color' => $selectedColor ? $selectedColor->color : null,
+                        'size' => $selectedSize ? $selectedSize->size : null,
+                        'brand' => $selectedBrand ? $selectedBrand->name : null,
                         'product_price' => $new_price['number_one_product'],
                         'pay_type' => $request['selectedPrice']
 
@@ -506,7 +507,7 @@ class CartController extends Controller
                 "ratio" => $product->ratio,
                 "color" => $color ?? null,
                 "size" => $size ?? null,
-                "discount" => $product->discount ?? 0,
+                "discount" => $product->activeOffer()['percent'] ?? 0,
                 'selectedPrice' => $product->pivot->pay_type,
             ];
         });

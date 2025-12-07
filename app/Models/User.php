@@ -27,7 +27,14 @@ class User extends Authenticatable implements JWTSubject
         'password',
         'gender',
         'phone',
-        'category_id'
+        'category_id',
+        'telephone',
+        'avatar',
+        'company_name',
+        'national_code',
+        'economic_code',
+        'registration_number',   
+        'is_active'
     ];
     use HasRoles;
     /**

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AddressController;
 use App\Http\Controllers\Admin\CartController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductsController;
+use App\Http\Controllers\Admin\UserCategoryController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WaybillController;
 use App\Http\Controllers\HomeController;
@@ -114,6 +115,31 @@ Route::middleware('auth:api')->group(function () {
         Route::get('users', [UserController::class, 'index'])
             // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
         ;
+        Route::post('users/store', [UserController::class, 'store'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+        Route::post('users/update', [UserController::class, 'update'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+        Route::post('users/delete', [UserController::class, 'destroy'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+        Route::get('users/show', [UserController::class, 'show'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+        Route::get('user-categories', [UserCategoryController::class, 'index'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+        Route::post('user-categories/store', [UserCategoryController::class, 'store'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+        Route::post('user-categories/update', [UserCategoryController::class, 'update'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+        Route::post('user-categories/delete', [UserCategoryController::class, 'delete'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+
     });
     
 
@@ -388,18 +414,18 @@ Route::get('get-header', function(){
                     'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" fill-rule="evenodd" d="M464 144c8.837 0 16 7.163 16 16v304c0 8.836-7.163 16-16 16H160c-8.837 0-16-7.164-16-16V160c0-8.837 7.163-16 16-16zm-52 68H212v200h200zm493.333 87.686c6.248 6.248 6.248 16.379 0 22.627l-181.02 181.02c-6.248 6.248-16.378 6.248-22.627 0l-181.019-181.02c-6.248-6.248-6.248-16.379 0-22.627l181.02-181.02c6.248-6.248 16.378-6.248 22.627 0zm-84.853 11.313L713 203.52L605.52 311L713 418.48zM464 544c8.837 0 16 7.164 16 16v304c0 8.837-7.163 16-16 16H160c-8.837 0-16-7.163-16-16V560c0-8.836 7.163-16 16-16zm-52 68H212v200h200zm452-68c8.837 0 16 7.164 16 16v304c0 8.837-7.163 16-16 16H560c-8.837 0-16-7.163-16-16V560c0-8.836 7.163-16 16-16zm-52 68H612v200h200z"/></svg>',
                     'children' => $output
                 ],
-                [
-                    'id' => 3,
-                    'faName' => 'پرداخت نقدی',
-                    'path' => '/pay',
-                    'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 20H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2Z"/><path fill="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M16.5 14a.5.5 0 1 1 0-1a.5.5 0 0 1 0 1"/><path d="M18 7V5.603a2 2 0 0 0-2.515-1.932l-11 2.933A2 2 0 0 0 3 8.537V9"/></g></svg>',
-                ],
-                [
-                    'id' => 4,
-                    'faName' => 'درباره ما',
-                    'path' => '/about-us',
-                    'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M9 12c1.93 0 3.5-1.57 3.5-3.5S10.93 5 9 5S5.5 6.57 5.5 8.5S7.07 12 9 12m0-5c.83 0 1.5.67 1.5 1.5S9.83 10 9 10s-1.5-.67-1.5-1.5S8.17 7 9 7m0 6.75c-2.34 0-7 1.17-7 3.5V18c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-.75c0-2.33-4.66-3.5-7-3.5M4.34 17c.84-.58 2.87-1.25 4.66-1.25s3.82.67 4.66 1.25zm11.7-3.19c1.16.84 1.96 1.96 1.96 3.44V19h3c.55 0 1-.45 1-1v-.75c0-2.02-3.5-3.17-5.96-3.44M15 12c1.93 0 3.5-1.57 3.5-3.5S16.93 5 15 5c-.54 0-1.04.13-1.5.35c.63.89 1 1.98 1 3.15s-.37 2.26-1 3.15c.46.22.96.35 1.5.35"/></svg>',
-                ],
+                // [
+                //     'id' => 3,
+                //     'faName' => 'پرداخت نقدی',
+                //     'path' => '/pay',
+                //     'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 20H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2Z"/><path fill="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M16.5 14a.5.5 0 1 1 0-1a.5.5 0 0 1 0 1"/><path d="M18 7V5.603a2 2 0 0 0-2.515-1.932l-11 2.933A2 2 0 0 0 3 8.537V9"/></g></svg>',
+                // ],
+                // [
+                //     'id' => 4,
+                //     'faName' => 'درباره ما',
+                //     'path' => '/about-us',
+                //     'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M9 12c1.93 0 3.5-1.57 3.5-3.5S10.93 5 9 5S5.5 6.57 5.5 8.5S7.07 12 9 12m0-5c.83 0 1.5.67 1.5 1.5S9.83 10 9 10s-1.5-.67-1.5-1.5S8.17 7 9 7m0 6.75c-2.34 0-7 1.17-7 3.5V18c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-.75c0-2.33-4.66-3.5-7-3.5M4.34 17c.84-.58 2.87-1.25 4.66-1.25s3.82.67 4.66 1.25zm11.7-3.19c1.16.84 1.96 1.96 1.96 3.44V19h3c.55 0 1-.45 1-1v-.75c0-2.02-3.5-3.17-5.96-3.44M15 12c1.93 0 3.5-1.57 3.5-3.5S16.93 5 15 5c-.54 0-1.04.13-1.5.35c.63.89 1 1.98 1 3.15s-.37 2.26-1 3.15c.46.22.96.35 1.5.35"/></svg>',
+                // ],
             ],
             "siteData" => [
                 "logo" => "https://webeto.co/uploads/Global/Webeto317.png",  // placeholder – مسیر لوگو، مثل '/images/logo.png'

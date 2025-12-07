@@ -113,10 +113,21 @@ class OrderController extends Controller
     }
 
     public function show(Order $order){
-       
+        
         $user = auth()->user();
+        $result = DB::table('order_product')
+            ->where('order_id', $order->id)
+            ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120', 'day_45', 'day_75', 'day_180']) // فقط day_* ها
+            ->select('pay_type', DB::raw('count(distinct pay_type) as total'))
+            ->groupBy('pay_type')
+            ->get();
+        
+        // جمع کل day_* ها
+        $check_count = $result->sum('total');
         $selected_address = $user->addresses->where('status',1)->first()->id ?? [];
         $checkes = $order->checkes;
+
+        
         $pivot = OrderProduct::where('order_id', $order->id)->get();
         $result = OrderProduct::where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
             ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
@@ -130,22 +141,30 @@ class OrderController extends Controller
                 'total_price' => number_format($item->total_price)
             ];
         });
-        $checkesUploaded = $result->map(function ($item) use ($order) {
-            $uploadedCheckes = Check::where('term_days', $item->pay_type)->where('order_id', $order->id)->get([
-                'image',
-                'type'
-            ])->map(function ($row) {
-                $row->image = 'https://files.epyc.ir/' . $row->image;
-                return $row;
+        
+        if ($order->checkes()->count() > 0){
+           
+            $checkesUploaded = $result->map(function ($item) use ($order) {
+                $uploadedCheckes = Check::where('term_days', $item->pay_type)->where('order_id', $order->id)->get([
+                    'image',
+                    'type'
+                ])->map(function ($row) {
+                    $row->image = 'https://files.epyc.ir/' . $row->image;
+                    return $row;
+                });
+                return [
+
+                    'pay_type' => $item->pay_type,
+                    'total_price' => number_format($item->total_price),
+                    'uploadedCheckes' => $uploadedCheckes,
+
+                ];
             });
-            return [
-
-                'pay_type' => $item->pay_type,
-                'total_price' => number_format($item->total_price),
-                'uploadedCheckes' => $uploadedCheckes,
-
-            ];
-        });
+        }
+        else{
+            $checkesUploaded = [];
+        }
+        
         $userId = auth()->user()->id;
         $orderUserId = $order->user_id;
         if ($userId != $orderUserId){
@@ -159,7 +178,14 @@ class OrderController extends Controller
         }
         $credit_count = DB::table('order_product')->where('order_id',$order->id)->where('pay_type', 'credit')->count();
         $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
-        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        
+        
+        $result = DB::table('order_product')
+            ->where('order_id', $order->id)
+            ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120', 'day_45', 'day_75', 'day_180']) // فقط day_* ها
+            ->select('pay_type', DB::raw('count(distinct pay_type) as total'))
+            ->groupBy('pay_type')
+            ->get();
         $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
         $cash_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->sum('price'));
         $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
@@ -178,6 +204,7 @@ class OrderController extends Controller
             'order_product.price as total_price',
             'products.name',
             'order_product.product_price',
+            'order_product.pay_type',
             'products.id',
             'products.ratio',
             'products.cover',
@@ -225,7 +252,15 @@ class OrderController extends Controller
         
         $credit_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->count();
         $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
-        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $result = DB::table('order_product')
+            ->where('order_id', $order->id)
+            ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120', 'day_45', 'day_75', 'day_180']) // فقط day_* ها
+            ->select('pay_type', DB::raw('count(distinct pay_type) as total'))
+            ->groupBy('pay_type')
+            ->get();
+
+        // جمع کل day_* ها
+        $check_count = $result->sum('total');
         $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
         $cash_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->sum('price'));
         $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
@@ -291,7 +326,15 @@ class OrderController extends Controller
 
         $credit_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->count();
         $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
-        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $result = DB::table('order_product')
+            ->where('order_id', $order->id)
+            ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120', 'day_45', 'day_75', 'day_180']) // فقط day_* ها
+            ->select('pay_type', DB::raw('count(distinct pay_type) as total'))
+            ->groupBy('pay_type')
+            ->get();
+
+        // جمع کل day_* ها
+        $check_count = $result->sum('total');
         $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
         $cash_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->sum('price'));
         $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
@@ -313,6 +356,7 @@ class OrderController extends Controller
             'order_product.size',
             'order_product.brand',
             'order_product.color',
+            'order_product.pay_type',
             'order_product.product_price',
             'order_product.price as total_price',
             'products.name',
@@ -357,7 +401,15 @@ class OrderController extends Controller
 
         $credit_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->count();
         $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
-        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $result = DB::table('order_product')
+            ->where('order_id', $order->id)
+            ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120', 'day_45', 'day_75', 'day_180']) // فقط day_* ها
+            ->select('pay_type', DB::raw('count(distinct pay_type) as total'))
+            ->groupBy('pay_type')
+            ->get();
+
+        // جمع کل day_* ها
+        $check_count = $result->sum('total');
         $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
         $cash_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->sum('price'));
         $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
@@ -379,6 +431,7 @@ class OrderController extends Controller
             'order_product.size',
             'order_product.brand',
             'order_product.color',
+            'order_product.pay_type',
             'order_product.product_price',
             'order_product.price as total_price',
             'products.name',
@@ -1086,7 +1139,25 @@ class OrderController extends Controller
     public function changeStatus(Request $request){
         $order = Order::findOrFail($request->order_id);
         $user = User::findOrFail($order->user_id);
-        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $result = DB::table('order_product')
+            ->where('order_id', $order->id)
+            ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120', 'day_45', 'day_75', 'day_180']) // فقط day_* ها
+            ->select('pay_type', DB::raw('count(distinct pay_type) as total'))
+            ->groupBy('pay_type')
+            ->get();
+
+        // جمع کل day_* ها
+        $check_count = $result->sum('total');
+        $result = DB::table('order_product')
+            ->where('order_id', $order->id)
+            ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120', 'day_45', 'day_75', 'day_180']) // فقط day_* ها
+            ->select('pay_type', DB::raw('count(distinct pay_type) as total'))
+            ->groupBy('pay_type')
+            ->get();
+
+        // جمع کل day_* ها
+        $check_count = $result->sum('total');
+        
         if ($request->status == 4){
             $address_id = $request->address_id;
             if (!$address_id) {
@@ -1124,7 +1195,17 @@ class OrderController extends Controller
             $totalUploaded = $checkesUploaded->sum(function ($item) {
                 return $item['uploadedCheckes']->count();
             });
-            if ($check_count * 2 == $totalUploaded){
+            $result = DB::table('order_product')
+                ->where('order_id', $order->id)
+                ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120','day_45','day_75','day_180']) // فقط day_* ها
+                ->select('pay_type', DB::raw('count(distinct pay_type) as total'))
+                ->groupBy('pay_type')
+                ->get();
+
+            // جمع کل day_* ها
+            $total = $result->sum('total');
+            
+            if ($total * 2 == $totalUploaded){
                 $order->status = $request->status;
                 $order->save();
                 return response()->json([
@@ -1151,7 +1232,15 @@ class OrderController extends Controller
             $order->description = $request->description;
             $order->status = $request->status;
             $order->save();
-            $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+            $result = DB::table('order_product')
+                ->where('order_id', $order->id)
+                ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120', 'day_45', 'day_75', 'day_180']) // فقط day_* ها
+                ->select('pay_type', DB::raw('count(distinct pay_type) as total'))
+                ->groupBy('pay_type')
+                ->get();
+
+            // جمع کل day_* ها
+            $check_count = $result->sum('total');
 
             return response()->json([
                 'data' => null,
@@ -1171,7 +1260,15 @@ class OrderController extends Controller
 
         $credit_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->count();
         $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
-        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $result = DB::table('order_product')
+            ->where('order_id', $order->id)
+            ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120', 'day_45', 'day_75', 'day_180']) // فقط day_* ها
+            ->select('pay_type', DB::raw('count(distinct pay_type) as total'))
+            ->groupBy('pay_type')
+            ->get();
+
+        // جمع کل day_* ها
+        $check_count = $result->sum('total');
         $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
         $cash_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->sum('price'));
         $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
@@ -1198,21 +1295,26 @@ class OrderController extends Controller
                 'type' => $item->type
             ];
         });
-        $checkesUploaded = $result->map(function ($item) use ($order) {
-            $uploadedCheckes = Check::where('term_days', $item->pay_type)->where('order_id', $order->id)->get([
-                'image',
-                'type'
-            ])->map(function ($row) {
-                $row->image = 'https://files.epyc.ir/' . $row->image;
-                return $row;
-            });
-            return [
-                'pay_type' => $item->pay_type,
-                'total_price' => number_format($item->total_price),
-                'uploadedCheckes' => $uploadedCheckes,
+        if ($check_count > 0) {
+            $checkesUploaded = $result->map(function ($item) use ($order) {
+                $uploadedCheckes = Check::where('term_days', $item->pay_type)->where('order_id', $order->id)->get([
+                    'image',
+                    'type'
+                ])->map(function ($row) {
+                    $row->image = 'https://files.epyc.ir/' . $row->image;
+                    return $row;
+                });
+                return [
 
-            ];
-        });
+                    'pay_type' => $item->pay_type,
+                    'total_price' => number_format($item->total_price),
+                    'uploadedCheckes' => $uploadedCheckes,
+
+                ];
+            });
+        } else {
+            $checkesUploaded = [];
+        }
 
         
         $products = $order->products()->withPivot('quantity')->join('groups', 'products.group_id', '=', 'groups.id')->with('category')->select([
@@ -1268,7 +1370,15 @@ class OrderController extends Controller
        
         $credit_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->count();
         $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
-        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
+        $result = DB::table('order_product')
+            ->where('order_id', $order->id)
+            ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120', 'day_45', 'day_75', 'day_180']) // فقط day_* ها
+            ->select('pay_type', DB::raw('count(distinct pay_type) as total'))
+            ->groupBy('pay_type')
+            ->get();
+
+        // جمع کل day_* ها
+        $check_count = $result->sum('total');
         $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
         $check_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE','%day_%')->sum('price'));
         

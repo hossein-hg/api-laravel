@@ -23,6 +23,7 @@ class OrederProductResource extends JsonResource
             'brand'=>$this->brand,
             'pay_type'=>$this->pay_type,
             'color'=>$this->color,
+           
             'price'=>number_format($this->product_price),
             'total_price'=>number_format($this->total_price),
             'ratio'=>$this->ratio,

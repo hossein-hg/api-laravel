@@ -188,12 +188,13 @@ class AuthController extends Controller
             $user = User::find($otp->user_id);
         }
         else{
+            $userCategory = UserCategory::where('name',"1")->first();
             // ایجاد کاربر با اطلاعات موجود در OTP
             $user = User::create([
                 'name' => $otp->name,
                 'phone' => $otp->phone,
                 'gender' => $otp->gender,
-                'category_id' => 1,
+                'category_id' => $userCategory ? $userCategory->id : "1",
                 // 'password' => bcrypt(Str::random(8)) // رمز عبور تصادفی
             ]);
 

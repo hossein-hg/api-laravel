@@ -25,9 +25,22 @@ class AddressController extends Controller
     }
 
     public function store(Request $request){
-        $inputs = $request->all();
-        $inputs['user_id'] = auth()->user()->id;
-        $address = Address::create($inputs);
+        
+       
+        $address = Address::create([
+            'first_name'=> $request->firstName,
+            'last_name'=> $request->lastName,
+            'province'=> $request->province,
+            'city'=> $request->city,
+            'address'=> $request->address,
+            'mobile'=> $request->mobile,
+            'phone'=> $request->phone,
+            'code'=> $request->postalCode,
+            'email'=> $request->email,
+            'description'=> $request->description,
+            'user_id'=> auth()->user()->id
+
+        ]);
         if($address){
             return response()->json([
                 'data' => null,
@@ -41,11 +54,23 @@ class AddressController extends Controller
 
     public function update(Request $request)
     {
-        $inputs = $request->all();
-        $address = Address::findOrFail($inputs['id']);
-       
-        $inputs['user_id'] = auth()->user()->id;
-        $address->update($inputs);
+        
+        $address = Address::findOrFail($request->id);
+
+        $address->update([
+            'first_name' => $request->firstName,
+            'last_name' => $request->lastName,
+            'province' => $request->province,
+            'city' => $request->city,
+            'address' => $request->address,
+            'mobile' => $request->mobile,
+            'phone' => $request->phone,
+            'code' => $request->postalCode,
+            'email' => $request->email,
+            'description' => $request->description,
+            'user_id' => auth()->user()->id
+
+        ]);
         if ($address) {
             return response()->json([
                 'data' => null,

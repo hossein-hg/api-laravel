@@ -24,8 +24,8 @@ class UserResource extends JsonResource
             "avatar"=> $this->avatar,
             "user_type"=> $this->user_type,
             "company_name"=> $this->company_name,
-            "natinal_code"=> $this->natinal_code,
-            "economic_code"=> $this->natinal_code,
+            "national_code"=> $this->national_code,
+            "economic_code"=> $this->economic_code,
             "registration_number"=> $this->registration_number,
             "is_active"=> $this->is_active == 1 ? true : false,
         ];

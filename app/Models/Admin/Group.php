@@ -11,7 +11,7 @@ class Group extends Model
     public function filters(){
         return $this->hasMany(Filter::class);
     }
-
+    
     public function products()
     {
         return $this->hasMany(Product::class);
