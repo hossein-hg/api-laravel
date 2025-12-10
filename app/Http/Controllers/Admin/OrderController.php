@@ -1,27 +1,31 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
-use App\Http\Requests\Admin\Order\UploadCheckRequest;
-use App\Http\Resources\AddressResource;
-use App\Http\Resources\OrderCollection;
-use App\Http\Resources\OrderResource;
-use App\Http\Resources\OrederProductResource;
-use App\Http\Resources\ProductResource;
-use App\Models\Admin\Address;
-use App\Models\Admin\Brand;
+use DB;
 use App\Models\User;
 use App\Models\Admin\Cart;
-use App\Http\Controllers\Controller;
+use App\Models\Admin\Size;
+use App\Models\Admin\Brand;
 use App\Models\Admin\Check;
 use App\Models\Admin\Color;
-use App\Models\Admin\OrderProduct;
-use App\Models\Admin\Size;
 use App\Models\Admin\Order;
-use App\Models\Admin\Product;
 use Illuminate\Support\Str;
-use DB;
 use Illuminate\Http\Request;
+use App\Models\Admin\Address;
+use App\Models\Admin\Product;
+use App\Models\Admin\RoleLog;
+use App\Models\Admin\CartProduct;
+use App\Models\Admin\OrderComment;
+use App\Models\Admin\OrderProduct;
+use App\Http\Controllers\Controller;
+use App\Http\Resources\OrderResource;
+use App\Http\Resources\AddressResource;
+use App\Http\Resources\OrderCollection;
+use Illuminate\Support\Facades\Validator;
 use App\Http\Resources\OrderProductCollection;
+use App\Http\Requests\Admin\Order\UploadCheckRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
+
 class OrderController extends Controller
 {
 
@@ -77,29 +81,46 @@ class OrderController extends Controller
                     'user_id'=> $cart->user_id
                 ]
             );
-            foreach($cart->products as $item){
-                $productId = $item->id;
-                $attributes = [
-                    'order_id' => $order->id,
-                    'product_id' => $productId, 
-                    'quantity' => $item->pivot->quantity,
-                    'price' => $item->pivot->price,
-                    'ratio' => $item->ratio,
-                    'discount' => $item->discount,
-                    'size' => $item->pivot->size,
-                    'color' => $item->pivot->color,
-                    'brand' => $item->pivot->brand,
-                    'pay_type' => $item->pivot->pay_type,
-                    'product_price' => $item->pivot->product_price,
-                    'init_price'=> $item->pivot->product_price,
-                ];
-                if ($order->products()->where('products.id', $productId)->exists()) {
-                    $order->products()->updateExistingPivot($productId, $attributes);
-                } else {
-                    $order->products()->attach($productId, $attributes);
-                }
+            $cart_items = CartProduct::where('cart_id', $cart->id)->get();
+
+        
+            foreach ($cart_items as $item) {
+                    $productId = $item->product_id;
+                    $size = $item->size;
+                    $color = $item->color;
+                    $brand = $item->brand;
+                    $order_item = OrderProduct::where('product_id', $productId)->where('size',$size)->where('color', $color)->where('brand', $brand)->where('order_id',$order->id)->first();
+                    
+                    if(!$order_item){
+
+                        $order_item = new OrderProduct();
+                        $order_item->product_id = $productId;
+                        $order_item->order_id = $order->id;
+                        $order_item->quantity = $item->quantity;
+                        $order_item->brand = $brand;
+                        $order_item->size = $size;
+                        $order_item->color = $color;
+                        $order_item->discount = $item->discount;
+                        $order_item->pay_type = $item->pay_type;
+                        $order_item->product_price = $item->product_price;
+                        $order_item->init_price = $item->product_price;
+                        $order_item->price = $item->price;
+                        $order_item->ratio = $item->ratio;
+                        $order_item->save();
+                    }
             }
+            
             $cart->delete();
+            $user = auth()->user();
+            $roleLog = new RoleLog();
+            $roleLog->ip = $request->ip();
+            $roleLog->user_id = $user->id;
+            $userRole = $user->getJWTCustomClaims()['role'] ?? null;
+            $roleLog->role = $userRole;
+            $roleLog->loggable_type = "App\Admin\Order";
+            $roleLog->loggable_id = $order->id;
+            $roleLog->description = "محصولات از سبد خرید به سفارش منتقل شد";
+            $roleLog->save();
             return response()->json([
                 'data'=> [
                     'order_id'=> $order->id
@@ -276,7 +297,7 @@ class OrderController extends Controller
         });
 
 
-       
+      
         $products = $order->products()->withPivot('quantity')->join('groups', 'products.group_id', '=', 'groups.id')->with('category')->select([
             'order_product.quantity',
             'order_product.size',
@@ -292,8 +313,8 @@ class OrderController extends Controller
             'groups.name as category_name'
             
         ])->with('sizes','brands','colors')->paginate(2);
-
-       
+            
+           
         $address = $user->addresses->where('status',1)->first() ?? null;
        
         $data = [
@@ -474,49 +495,121 @@ class OrderController extends Controller
        
         $orderId = $request->order_id;
         $product = Product::findOrFail($request->product_id);
-       
-        DB::table('order_product')->where('order_id',$orderId)->where('product_id',$product->id)->delete();
+        $selectedColor = null;
+        if ($request->color){
+                $selectedColor = Color::where('color', $request->color)->where('product_id',$product->id)->first();
+        }
+        $selectedBrand = null;
+        if ($request->brand) {
+            $selectedBrand = Brand::where('name', $request->brand)->where('product_id', $product->id)->first();
+        }
+        $selectedSize = null;
+        if ($request->size) {
+            $selectedSize = Size::where('size', $request->size)->where('product_id', $product->id)->first();
+        }
+        $getColor =  $selectedColor->color ?? null;
+        $getSize = $selectedSize->size ?? null;
+        $getBrand = $selectedBrand->name ?? null;
+        // dd($getSize,$getColor, $getBrand, $product->id, $orderId);
+        $existingProductInPivot = OrderProduct::where('product_id', $product->id)->where('order_id', $orderId)
+            ->where(function ($query) use ($getColor) {
+                if (is_null($getColor)) {
+                    $query->whereNull('color');
+                } else {
+                    $query->where('color', $getColor);
+                }
+            })
+            ->where(function ($query) use ($getSize) {
+                if (is_null($getSize)) {
 
-        $total_price = DB::table('order_product')->where('order_id',$orderId)->sum('price');
-        $count = DB::table('order_product')->where('order_id',$orderId)->count();
-        
-        Order::findOrFail($orderId)->update([
-            'total_price'=> $total_price,
-            'count'=> $count,
-        ]); 
-        $order = Order::findOrFail($orderId);
-        $total_price = $order->total_price;
-        $order->count == 0 ? $order->delete() : null;
+                    $query->whereNull('size');
+                } else {
+                    $query->where('size', $getSize);
+                }
+            })
+            ->where(function ($query) use ($getBrand) {
+                if (is_null($getBrand)) {
+                    $query->whereNull('brand');
+                } else {
+                    $query->where('brand', $getBrand);
+                }
+            })
+            ->first();
            
-        $products = $order->products()->withPivot('quantity')->select([
-            'order_product.quantity',
-            'order_product.price as total_price',
-            'products.name',
-            'products.price',
-            'products.id',
-            'products.ratio',
-            'products.cover',
-            'order_product.size',
-            'order_product.color',
-        ])->paginate(10);
-
-        
-        $data = [
-           
-            'data'=> [
-                'products' => new OrderProductCollection($products),
-                'order' => [
-                        'total_price' => $total_price,
-                ],
-            ],      
             
-            'statusCode' => 200,
-            'message' => 'موفقیت آمیز',
-            'success' => true,
-            'errors' => null,
-        ];
+        if ($existingProductInPivot) {
+            $user = auth()->user();
+            $roleLog = new RoleLog();
+            $roleLog->ip = $request->ip();
+            $roleLog->user_id = $user->id;
+            $userRole = $user->getJWTCustomClaims()['role'] ?? null;
+            $roleLog->role = $userRole;
+            $roleLog->loggable_type = "App\Admin\Order";
+            $roleLog->loggable_id = $orderId;
+            $roleLog->description = "محصول با نام  ".$product->name ."  از  سفارش حذف شد ";
+            $roleLog->save();
+            // dd($roleLog);
+            $existingProductInPivot->delete();
+            $total_price = DB::table('order_product')->where('order_id', $orderId)->sum('price');
+            $count = DB::table('order_product')->where('order_id', $orderId)->count();
+
+            Order::findOrFail($orderId)->update([
+                'total_price' => $total_price,
+                'count' => $count,
+            ]);
+            $order = Order::findOrFail($orderId);
+            $total_price = $order->total_price;
+            $order->count == 0 ? $order->delete() : null;
+
+            $products = $order->products()->withPivot('quantity')->select([
+                'order_product.quantity',
+                'order_product.price as total_price',
+                'products.name',
+                'products.price',
+                'products.id',
+                'products.ratio',
+                'products.cover',
+                'order_product.size',
+                'order_product.color',
+            ])->paginate(10);
+            
+            $data = [
+
+                'data' => [
+                    'products' => new OrderProductCollection($products),
+                    'order' => [
+                        'total_price' => $total_price,
+                    ],
+                ],
+
+                'statusCode' => 200,
+                'message' => 'موفقیت آمیز',
+                'success' => true,
+                'errors' => null,
+            ];
+            return response()->json($data);
+            
+        }else{
+            $data = [
+
+                'data' => [
+                   
+                ],
+
+                'statusCode' => 404,
+                'message' => 'محصول یافت نشد',
+                'success' => false,
+                'errors' => null,
+            ];
+            return response()->json($data);
+        }
+         
+       
+
         
-        return response()->json($data);
+        
+        
+        
 
     }
 
@@ -525,6 +618,16 @@ class OrderController extends Controller
         
         DB::table('order_product')->where('order_id', $order->id)->delete();
         $order->delete();
+        $user = auth()->user();
+        $roleLog = new RoleLog();
+        $roleLog->ip = $request->ip();
+        $roleLog->user_id = $user->id;
+        $userRole = $user->getJWTCustomClaims()['role'] ?? null;
+        $roleLog->role = $userRole;
+        $roleLog->loggable_type = "App\Admin\Order";
+        $roleLog->loggable_id = $order->id;
+        $roleLog->description = "سفارش با ایدی  " . $order->id . "   حذف شد ";
+        $roleLog->save();
         $query = Order::with('products', 'user');
         $orders = $query->paginate(10);
 
@@ -558,6 +661,27 @@ class OrderController extends Controller
                     'image' => $relativePath,
                 ]
             );
+            $success = false;
+            if (!$check){
+                return response()->json([
+
+                    'data' => null,
+                    'statusCode' => 500,
+                    'success' => false,
+                    'message' => 'عکس اپلود نشد!',
+                    'errors' => null
+                ]);
+            }
+            $user = auth()->user();
+            $roleLog = new RoleLog();
+            $roleLog->ip = $request->ip();
+            $roleLog->user_id = $user->id;
+            $userRole = $user->getJWTCustomClaims()['role'] ?? null;
+            $roleLog->role = $userRole;
+            $roleLog->loggable_type = "App\Admin\Check";
+            $roleLog->loggable_id = $check->id;
+            $roleLog->description = "نصویر چک آپلود شد";
+            $roleLog->save();
             return response()->json([
                 
                 'data' => [
@@ -596,6 +720,27 @@ class OrderController extends Controller
                     'image' => $relativePath,
                 ]
             );
+            $success = false;
+            if (!$check) {
+                return response()->json([
+
+                    'data' => null,
+                    'statusCode' => 500,
+                    'success' => false,
+                    'message' => 'عکس اپلود نشد!',
+                    'errors' => null
+                ]);
+            }
+            $user = auth()->user();
+            $roleLog = new RoleLog();
+            $roleLog->ip = $request->ip();
+            $roleLog->user_id = $user->id;
+            $userRole = $user->getJWTCustomClaims()['role'] ?? null;
+            $roleLog->role = $userRole;
+            $roleLog->loggable_type = "App\Admin\Check";
+            $roleLog->loggable_id = $check->id;
+            $roleLog->description = "نصویر تایید چک آپلود شد";
+            $roleLog->save();
             return response()->json([
                 
                 'data' => [
@@ -629,190 +774,348 @@ class OrderController extends Controller
         $selectedBrandGet = $request->get('brand') ?? null;
         $selectedCountGet = $request->get('count') ?? null;
 
+        $selectedOldColorGet = $request->get('oldColor') ?? null;
+        $selectedOldSizeGet = $request->get('oldSize') ?? null;
+        $selectedOldBrandGet = $request->get('oldBrand') ?? null;
 
-        $row = OrderProduct::
-            where('order_id', $order->id)
-            ->where('product_id', $product->id)
-            ->first();
-        $previous_color = $row->color ?? null;
-        $previous_size = $row->size ?? null;
-        $previous_brand = $row->brand ?? null;
-        $previous_product_price = (int)$row->init_price ?? null;
-        $product_count = $row->quantity ?? null;
-        $product_type = $row->pay_type;
-        $update = false;
-        $new_product_price = (int) $previous_product_price;
+        $is_exist = false;
+        // dd($selectedOldColorGet, $selectedColorGet, $selectedOldBrandGet, $selectedBrandGet, $selectedOldSizeGet,$selectedSizeGet);
+        if  ($selectedOldColorGet == $selectedColorGet and $selectedOldBrandGet == $selectedBrandGet and $selectedOldSizeGet == $selectedSizeGet ) {
+            // dd('hidsdsds');
+            // $is_exist = true;
+        }
+        // dd($is_exist);
 
-        $new_color_price= 0;
-        $diffColor = 0;
-        $selectedColorObj = null;
-        if($selectedColor or $selectedColorGet){
-           
-            
-            
-            $previous_color_price = Color::where('product_id',$product->id)->where('color', $previous_color)->value('price');
-            if($previous_color_price){
-                if ($selectedColor) {
-                    $selectedColorObj = Color::where('product_id', $product->id)->where('color', $selectedColor)->first();
+
+        $productColors = $product->colors;
+        $selectColor = null;
+        if($productColors){
+            $selectColor = $productColors->where('color', $selectedColorGet)->first();
+        }
+
+        $productSizes = $product->sizes;
+        $selectSize = null;
+        if ($productSizes) {
+                $selectSize = $productSizes->where('size', $selectedSizeGet)->first();
+
+        }
+
+        $productBrands = $product->brands;
+        $selectBrand = null;
+        if ($productBrands) {
+            $selectBrand = $productBrands->where('name', $selectedBrandGet)->first();
+
+        }
+        
+        
+        $getColor = $selectColor ? $selectColor->color : null;
+        $getSize = $selectSize ? $selectSize->size : null;
+        $getBrand = $selectBrand ? $selectBrand->name : null;
+        
+        $existingProductInPivot = OrderProduct::where('product_id', $product->id)->where('order_id',$order->id)
+            ->where(function ($query) use ($getColor) {
+                if (is_null($getColor)) {
+                    $query->whereNull('color');
                 } else {
-                    $selectedColorObj = Color::where('product_id', $product->id)->where('color', $selectedColorGet)->first();
+                    $query->where('color', $getColor);
                 }
-                $selected_color_price = $selectedColorObj->price;
-                $oldPrice = $previous_color_price * $row->ratio * $product_count;
-                $new_color_price = $previous_product_price - ($oldPrice) + ($selected_color_price * $row->ratio * $product_count);
-                $diffColor = -($previous_product_price - $new_color_price);
-                if (request()->getMethod() == 'POST'):
-                    $row->color = $selectedColorObj->color;
-                    $update = true;
-                endif;
+            })
+            ->where(function ($query) use ($getSize) {
+                if (is_null($getSize)) {
+
+                    $query->whereNull('size');
+                } else {
+                    $query->where('size', $getSize);
+                }
+            })
+            ->where(function ($query) use ($getBrand) {
+                if (is_null($getBrand)) {
+                    $query->whereNull('brand');
+                } else {
+                    $query->where('brand', $getBrand);
+                }
+            })->first();
 
 
-                $new_product_price += $diffColor;
-            }
-           
-           
+        
+        $selectColorOld = null;
+        if ($productColors) {
+            $selectColorOld = $productColors->where('color', $selectedOldColorGet)->first();
+        }
+
+        
+        $selectSizeOld = null;
+        if ($productSizes) {
+            $selectSizeOld = $productSizes->where('size', $selectedOldSizeGet)->first();
 
         }
 
-      
-        $new_size_price = 0;
-        $diffSize = 0;
-        $selectedSizeObj = null;
-        if ($selectedSize or $selectedSizeGet) {
-            $previous_size_price = Size::where('product_id', $product->id)->where('size', $previous_size)->value('price');
-            if($previous_size_price){
-                if ($previous_size_price) {
-                    if ($selectedSize) {
-                        $selectedSizeObj = Size::where('product_id', $product->id)->where('size', $selectedSize)->first();
+        
+        $selectBrandOld = null;
+        if ($productBrands) {
+            $selectBrandOld = $productBrands->where('name', $selectedOldBrandGet)->first();
+
+        }
+
+        $getColorOld = $selectColorOld ? $selectColorOld->color : null;
+        $getSizeOld = $selectSizeOld ? $selectSizeOld->size : null;
+        $getBrandOld = $selectBrandOld ? $selectBrandOld->name : null;
+
+        $row = OrderProduct::where('product_id', $product->id)->where('order_id', $order->id)
+            ->where(function ($query) use ($getColorOld) {
+                if (is_null($getColorOld)) {
+                    $query->whereNull('color');
+                } else {
+                    $query->where('color', $getColorOld);
+                }
+            })
+            ->where(function ($query) use ($getSizeOld) {
+                if (is_null($getSizeOld)) {
+
+                    $query->whereNull('size');
+                } else {
+                    $query->where('size', $getSizeOld);
+                }
+            })
+            ->where(function ($query) use ($getBrandOld) {
+                if (is_null($getBrandOld)) {
+                    $query->whereNull('brand');
+                } else {
+                    $query->where('brand', $getBrandOld);
+                }
+            })->first();
+
+        // $row = OrderProduct::
+        //     where('order_id', $order->id)
+        //     ->where('product_id', $product->id)->where('color',$request->oldColor)->where('brand',$request->oldBrand)->where('size',$request->oldSize)
+        //     ->first();
+        if($existingProductInPivot and $row){
+            // dd($existingProductInPivot->id, $row->id);
+            // dd('hi');
+            if ($existingProductInPivot->id != $row->id) {
+                // dd('hi');
+                $is_exist = true;
+            }
+        }    
+        
+
+        if($row){
+            $previous_color = $row->color ?? null;
+            $previous_size = $row->size ?? null;
+            $previous_brand = $row->brand ?? null;
+            $previous_product_price = (int) $row->init_price ?? null;
+            $product_count = $row->quantity ?? null;
+
+            $product_type = $row->pay_type;
+            $new_product_price = (int) $previous_product_price;
+
+
+
+            $update = false;
+
+
+            $new_color_price = 0;
+            $diffColor = 0;
+            $selectedColorObj = null;
+            if ($selectedColor or $selectedColorGet) {
+
+
+
+                $previous_color_price = Color::where('product_id', $product->id)->where('color', $previous_color)->value('price');
+                if ($previous_color_price) {
+                    if ($selectedColor) {
+                        $selectedColorObj = Color::where('product_id', $product->id)->where('color', $selectedColor)->first();
                     } else {
-                        $selectedSizeObj = Size::where('product_id', $product->id)->where('size', $selectedSizeGet)->first();
+                        $selectedColorObj = Color::where('product_id', $product->id)->where('color', $selectedColorGet)->first();
                     }
-                    $selected_size_price = $selectedSizeObj->price;
-                    $oldPrice = $previous_size_price * $row->ratio * $product_count;
-                    $newPrice = $selected_size_price * $row->ratio * $product_count;
+                    if($selectedColorObj){
+                        $selected_color_price = $selectedColorObj->price;
+                        $oldPrice = $previous_color_price * $row->ratio * $product_count;
+                        $new_color_price = $previous_product_price - ($oldPrice) + ($selected_color_price * $row->ratio * $product_count);
+                        $diffColor = -($previous_product_price - $new_color_price);
+                        if (request()->getMethod() == 'POST'):
+                            $row->color = $selectedColorObj->color;
+                            $update = true;
+                        endif;
 
-                    $new_size_price = $previous_product_price - ($oldPrice) + ($selected_size_price * $row->ratio * $product_count);
-                    $diffSize = -($previous_product_price - $new_size_price);
 
-                    if (request()->getMethod() == 'POST') {
-                        $row->size = $selectedSizeObj->size;
+                        $new_product_price += $diffColor;
+                    }
+                    
+                }
+
+
+
+            }
+
+
+            $new_size_price = 0;
+            $diffSize = 0;
+            $selectedSizeObj = null;
+            if ($selectedSize or $selectedSizeGet) {
+                $previous_size_price = Size::where('product_id', $product->id)->where('size', $previous_size)->value('price');
+                if ($previous_size_price) {
+                    if ($previous_size_price) {
+                        if ($selectedSize) {
+                            
+                            $selectedSizeObj = Size::where('product_id', $product->id)->where('size', $selectedSize)->first();
+                        } else {
+                            
+                            $selectedSizeObj = Size::where('product_id', $product->id)->where('size', $selectedSizeGet)->first();
+                        }
+                        if($selectedSizeObj){
+                            $selected_size_price = $selectedSizeObj->price;
+                            $oldPrice = $previous_size_price * $row->ratio * $product_count;
+                            $newPrice = $selected_size_price * $row->ratio * $product_count;
+
+                            $new_size_price = $previous_product_price - ($oldPrice) + ($selected_size_price * $row->ratio * $product_count);
+                            $diffSize = -($previous_product_price - $new_size_price);
+
+                            if (request()->getMethod() == 'POST') {
+                                $row->size = $selectedSizeObj->size;
+                                $update = true;
+                            }
+                            $new_product_price += $diffSize;
+                        }
+                        
+                    }
+
+                }
+            }
+
+            $new_brand_price = 0;
+            $diffBrand = 0;
+            $selectedBrandObj = null;
+            if ($selectedBrand or $selectedBrandGet) {
+                $previous_brand_price = Brand::where('product_id', $product->id)->where('name', $previous_brand)->value('price');
+                if ($selectedBrand) {
+                    $selectedBrandObj = Brand::where('product_id', $product->id)->where('name', $selectedBrand)->first();
+                } else {
+                    $selectedBrandObj = Brand::where('product_id', $product->id)->where('name', $selectedBrandGet)->first();
+                }
+                if ($selectedBrandObj){
+                    $selected_brand_price = $selectedBrandObj->price;
+                    $oldPrice = $previous_brand_price * $row->ratio * $product_count;
+                    $newPrice = $selected_brand_price * $row->ratio * $product_count;
+                    $new_brand_price = $previous_product_price - ($oldPrice) + ($selected_brand_price * $row->ratio * $product_count);
+
+                    $diffBrand = -($previous_product_price - $new_brand_price);
+
+                    if (request()->getMethod() == 'POST'):
+                        $row->brand = $selectedBrandObj->name;
                         $update = true;
-                    }
-                    $new_product_price += $diffSize;
-            }
-           
-            }
-           
-           
-
-        }
-
-        $new_brand_price = 0;
-        $diffBrand = 0;
-        $selectedBrandObj = null;
-        if ($selectedBrand or $selectedBrandGet) {
-            $previous_brand_price = Brand::where('product_id', $product->id)->where('name', $previous_brand)->value('price');
-            if ($selectedBrand){
-                $selectedBrandObj = Brand::where('product_id', $product->id)->where('name', $selectedBrand)->first();
-            }
-            else{
-                $selectedBrandObj = Brand::where('product_id', $product->id)->where('name', $selectedBrandGet)->first();
-            }
-            $selected_brand_price = $selectedBrandObj->price;
-            $oldPrice = $previous_brand_price * $row->ratio * $product_count;
-            $newPrice = $selected_brand_price * $row->ratio * $product_count;
-            $new_brand_price = $previous_product_price - ($oldPrice) + ($selected_brand_price * $row->ratio * $product_count);
-           
-            $diffBrand =  -($previous_product_price - $new_brand_price);
-           
-            if (request()->getMethod() == 'POST'):$row->brand = $selectedBrandObj->name;
-                $update = true; endif;
-            $new_product_price += $diffBrand;
-            
-
-        }
-
-        $new_total_product_price = $new_product_price;
-        $inventory = false;
-        
-        if ($selectedCount or $selectedCountGet) {
-            
-            
-            if ($selectedCount and request()->getMethod() == 'POST'){
-               
-                $new_total_product_price = $new_product_price * $selectedCount;
+                    endif;
+                    $new_product_price += $diffBrand;
+                }
                 
-                $row->quantity = $selectedCount;
-                $update = true; 
+
+
+            }
+
+            $new_total_product_price = $new_product_price;
+            $inventory = false;
+
+            if ($selectedCount or $selectedCountGet) {
+
+
+                if ($selectedCount and request()->getMethod() == 'POST') {
+
+                    $new_total_product_price = $new_product_price * $selectedCount;
+
+                    $row->quantity = $selectedCount;
+                    $update = true;
+                } else {
+
+                    $inventory = $selectedCountGet * $product->ratio > $product->warehouseInventory ? true : false;
+
+                    $new_total_product_price = $new_product_price * $selectedCountGet;
+
+
+                }
+
+
+            }
+
+            $new_price = price($product, $selectedColorObj, $selectedBrandObj, $selectedSizeObj, $product_type, $selectedCountGet);
+
+
+            if ($update):
+                $row->product_price = $new_price['number_one_product'];
+                $old_total_product_price = $row->price;
+                $row->price = $new_price['number_total_product_price'];
+                $row->save();
+                // $new_product_price = $new_product_price + $diffSize + $diffBrand + $diffColor; // for one product 
+                $new_total_price = ($order->total_price - $old_total_product_price + $new_price['number_total_product_price']);
+
+
+                $order->total_price = $new_total_price;
+                $order->save();
+                $user = auth()->user();
+                $roleLog = new RoleLog();
+                $roleLog->ip = $request->ip();
+                $roleLog->user_id = $user->id;
+                $userRole = $user->getJWTCustomClaims()['role'] ?? null;
+                $roleLog->role = $userRole;
+                $roleLog->loggable_type = "App\Admin\Order";
+                $roleLog->loggable_id = $order->id;
+                $roleLog->description = "محصول با نام  " . $product->name . "  در سفارش  ویرایش شد ";
+                $roleLog->save();
+            endif;
+            if (request()->getMethod() == 'GET') {
+                return [
+                    'data' => [
+                        'name' => $product->name,
+                        'cover' => $product->cover,
+                        'ratio' => $product->ratio,
+                        'size' => $request->query('size'),
+                        'color' => $request->query('color'),
+                        'brand' => $request->query('brand'),
+                        'count' => $request->query('count'),
+                        'colors' => $product->colors->pluck('color'),
+                        'brands' => $product->brands->pluck('name'),
+                        'sizes' => $product->sizes->pluck('size'),
+                        'categoryName' => $product->group->name ?? '',
+                        'selected_count' => $product_count,
+                        'selected_color' => $previous_color,
+                        'selected_brand' => $previous_brand,
+                        'selected_size' => $previous_size,
+                        'product_price' => $new_price['one_product'],
+                        'product_total_price' => $new_price['total_price'],
+                        'alertMessage' => $inventory ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
+                        'existInOrder' => $is_exist ? 1 : 0,
+
+                    ],
+
+                    'statusCode' => 200,
+                    'success' => true,
+                    'message' => 'موفقیت آمیز',
+                    'errors' => null
+
+                ];
             } else {
+                return [
+                    'data' => null,
 
-                $inventory = $selectedCountGet * $product->ratio > $product->warehouseInventory ? true : false;
-                
-                $new_total_product_price = $new_product_price * $selectedCountGet;
-                
+                    'statusCode' => 200,
+                    'success' => true,
+                    'message' => 'موفقیت آمیز',
+                    'errors' => null
 
+                ];
             }
-            
-           
-        }
-        
-        $new_price = price($product,$selectedColorObj, $selectedBrandObj, $selectedSizeObj,$product_type,$selectedCountGet);
-  
-      
-        if ($update):
-            $row->product_price = $new_price['number_one_product'];
-            $old_total_product_price = $row->price;
-            $row->price = $new_price['number_total_product_price'];
-            $row->save();
-            // $new_product_price = $new_product_price + $diffSize + $diffBrand + $diffColor; // for one product 
-            $new_total_price = ($order->total_price - $old_total_product_price + $new_price['number_total_product_price']);
-            
 
-            $order->total_price = $new_total_price;
-            $order->save();
-        endif;
-        if (request()->getMethod() == 'GET') {
-            return [
-                'data'=> [
-                    'name'=> $product->name,
-                    'cover'=> $product->cover,
-                    'ratio'=> $product->ratio,
-                    'size'=> $request->query('size'),
-                    'color'=> $request->query('color'),
-                    'brand'=> $request->query('brand'),
-                    'count'=> $request->query('count'),
-                    'colors'=> $product->colors->pluck('color'),
-                    'brands'=> $product->brands->pluck('name'),
-                    'sizes'=> $product->sizes->pluck('size'),
-                    'categoryName'=> $product->group->name ?? '',
-                    'selected_count'=> $product_count,
-                    'selected_color'=> $previous_color,
-                    'selected_brand'=> $previous_brand,
-                    'selected_size'=> $previous_size,
-                    'product_price'=> $new_price['one_product'],
-                    'product_total_price'=> $new_price['total_price'],
-                    'alertMessage'=> $inventory ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
-
-                ],
-
-                'statusCode' => 200,
-                'success' => true,
-                'message' => 'موفقیت آمیز',
-                'errors' => null
-
-            ];
-        }
-        else{
+        } else {
             return [
                 'data' => null,
 
-                'statusCode' => 200,
-                'success' => true,
-                'message' => 'موفقیت آمیز',
+                'statusCode' => 404,
+                'success' => false,
+                'message' => 'محصول یافت نشد',
                 'errors' => null
 
             ];
         }
+        
         
         
     }
@@ -828,8 +1131,8 @@ class OrderController extends Controller
         $order = Order::findOrFail($request->order_id);
         $validatedValues = ['credit', 'cash'];
 
-        $existingProduct = $order->products()->find($product->id);
-        $exist = $existingProduct ? true : false;
+        
+        
         $user = $order->user;
         $category = $user->category;
         $price = $product->price * $product->ratio;
@@ -873,56 +1176,77 @@ class OrderController extends Controller
             ]);
         }
         }
-        $env = false;    
+        $env = false;
+        $getColor = $selectedColor ? $selectedColor->color : null;
+        $getSize = $selectedSize ? $selectedSize->size : null;
+        $getBrand = $selectedBrand ? $selectedBrand->name : null;
+        $existingProductInPivot = OrderProduct::where('product_id', $product->id)->where('order_id', $order->id)
+            ->where(function ($query) use ($getColor) {
+                if (is_null($getColor)) {
+                    $query->whereNull('color');
+                } else {
+                    $query->where('color', $getColor);
+                }
+            })
+            ->where(function ($query) use ($getSize) {
+                if (is_null($getSize)) {
+
+                    $query->whereNull('size');
+                } else {
+                    $query->where('size', $getSize);
+                }
+            })
+            ->where(function ($query) use ($getBrand) {
+                if (is_null($getBrand)) {
+                    $query->whereNull('brand');
+                } else {
+                    $query->where('brand', $getBrand);
+                }
+            })
+            ->first();
+
+        $exist = $existingProductInPivot ? true : false;    
         if ($request->getMethod() == 'POST' ){
             $inventory = true;
+           
+            
             if ($product->warehouseInventory < ($count * $product->ratio)) {
                 $inventory = false;
-                if ($existingProduct) {
-                    $count = $existingProduct->quantity;
+                if ($existingProductInPivot) {
+                    $count = $existingProductInPivot->quantity;
                 } else {
                     $count = 1;
                 }
             }
             $new_price = price($product, $selectedColor, $selectedBrand, $selectedSize, $request['selectedPrice'], $count);
             if ($inventory) {
-                if ($existingProduct) {
+                if ($existingProductInPivot) {
 
                 } else {
-                    $order->products()->attach($product->id, [
-                        'quantity' => $count,
-                        'ratio' => $product->ratio,
-                        'price' => $new_price['number_total_product_price'],
-                        'color' => $color ?? null,
-                        'size' => $size ?? null,
-                        'brand' => $brand ?? null,
-                        'product_price' => $new_price['number_one_product'],
-                        'init_price' => $new_price['number_one_product'],
-                        'pay_type' => $request['selectedPrice'],
-                        'order_id'=> $order->id,
-                    ]);
+                   
+                    $new_cart_order_record = new OrderProduct();
+                    $new_cart_order_record->order_id = $order->id;
+                    $new_cart_order_record->quantity = $count;
+                    $new_cart_order_record->ratio = $product->ratio;
+                    $new_cart_order_record->price = $new_price['number_total_product_price'];
+                    $new_cart_order_record->color = $selectedColor ? $selectedColor->color : null;
+                    $new_cart_order_record->size = $selectedSize ? $selectedSize->size : null;
+                    $new_cart_order_record->brand = $selectedBrand ? $selectedBrand->name : null;
+                    $new_cart_order_record->product_price = $new_price['number_one_product'];
+                    $new_cart_order_record->pay_type = $request['selectedPrice'];
+                    $new_cart_order_record->product_id = $product->id;
+                    $new_cart_order_record->init_price = $new_price['number_one_product'];
+                    $new_cart_order_record->save();
                 }
             } else {
-                if ($existingProduct) {
-
-                    $order->products()->updateExistingPivot($product->id, [
-                        'inventory' => 0,
-                        'pay_type' => $request['selectedPrice']
-                    ]);
+                if ($existingProductInPivot) {
+                    $existingProductInPivot->inventory = 0;
+                    $existingProductInPivot->pay_type = $request['selectedPrice'];
+                    $existingProductInPivot->save();
+                    
                 } else {
                     $env = false;
-                    $order->products()->attach($product->id, [
-                        'quantity' => 1,
-                        'price' => $new_price['number_total_product_price'],
-                        'ratio' => $product->ratio,
-                        'inventory' => 1,
-                        'color' => $color ?? null,
-                        'size' => $size ?? null,
-                        'product_price' => $new_price['number_one_product'],
-                        'init_price' => $new_price['number_one_product'],
-                        'pay_type' => $request['selectedPrice'],
-                        'order_id'=> $order->id,
-                    ]);
+                    
                 }
             }
         $reqMap = collect($all_request)->keyBy('id');
@@ -1002,15 +1326,8 @@ class OrderController extends Controller
         // $cart->count = $cartData['count'];
         $order->total_price = $orderData['total_price'];
         $order->save();
-        $amount = number_format($order->total_price);
         
         
-
-        $credit_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->count();
-        $cash_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->count();
-        $check_count = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')->count();
-        $credit_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'credit')->sum('price'));
-        $cash_total_price = number_format(DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'cash')->sum('price'));
         $result = DB::table('order_product')->where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
             ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
             ->groupBy('pay_type')
@@ -1030,37 +1347,21 @@ class OrderController extends Controller
         $countOrder = DB::table('order_product')->where('order_id', $order->id)->count();
         $order->count = $countOrder;
         $order->save();
-
-        // $order->total_price == 0 ? $order->delete() : null;
-
-        // $order = $order->fresh();
-
-        // if (!$order) {
-        //     return response()->json([
-        //         'data' =>
-        //             null
-        //         ,
-        //         'message' => 'سبد خرید خالی است',
-        //         'statusCode' => 200,
-        //         'success' => true,
-        //         'errors' => null
-        //     ]);
-        // }
+            $user = auth()->user();
+            $roleLog = new RoleLog();
+            $roleLog->ip = $request->ip();
+            $roleLog->user_id = $user->id;
+            $userRole = $user->getJWTCustomClaims()['role'] ?? null;
+            $roleLog->role = $userRole;
+            $roleLog->loggable_type = "App\Admin\Order";
+            $roleLog->loggable_id = $order->id;
+            $roleLog->description = "محصول با نام  " . $product->name . "  به سفارش  اضافه شد ";
+            $roleLog->save();
+        
         return response()->json([
             'data' =>
                 [
-                    // 'id' => $order->id,
-                    // 'orderCount' => $countOrder,
-                    // 'amount' => (string) $amount,
-                    // 'postPay' => "120,000",
-                    // 'creditCount' => $credit_count,
-                    // 'checkesCount' => $check_count,
-                    // 'cashCount' => $cash_count,
-                    // 'checkes' => $checkes ?? null,
-                    // 'credit_total_price' => $credit_total_price,
-                    // 'cash_total_price' => $cash_total_price,
-                    // 'items' => $itemsForOutput,
-
+                    
                 ]
             ,
             'message' => 'محصول اضافه شد',
@@ -1146,8 +1447,7 @@ class OrderController extends Controller
             ->groupBy('pay_type')
             ->get();
 
-        // جمع کل day_* ها
-        $check_count = $result->sum('total');
+        
         $result = DB::table('order_product')
             ->where('order_id', $order->id)
             ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120', 'day_45', 'day_75', 'day_180']) // فقط day_* ها
@@ -1155,9 +1455,6 @@ class OrderController extends Controller
             ->groupBy('pay_type')
             ->get();
 
-        // جمع کل day_* ها
-        $check_count = $result->sum('total');
-        
         if ($request->status == 4){
             $address_id = $request->address_id;
             if (!$address_id) {
@@ -1208,6 +1505,15 @@ class OrderController extends Controller
             if ($total * 2 == $totalUploaded){
                 $order->status = $request->status;
                 $order->save();
+                $roleLog = new RoleLog();
+                $roleLog->ip = $request->ip();
+                $roleLog->user_id = $user->id;
+                $userRole = $user->getJWTCustomClaims()['role'] ?? null;
+                $roleLog->role = $userRole;
+                $roleLog->loggable_type = "App\Admin\Order";
+                $roleLog->loggable_id = $order->id;
+                $roleLog->description = "وضعیت سفارش تغییر کرد ";
+                $roleLog->save();
                 return response()->json([
                     'data' => null,
                     'statusCode' => 200,
@@ -1226,12 +1532,49 @@ class OrderController extends Controller
                 ]);
             }
             
-            
         }
         else{
-            $order->description = $request->description;
+            // $order->description = $request->description;
+            $user = auth()->user();
+            $userRole = $user->getJWTCustomClaims()['role'] ?? null;
+            if ($request->description){
+                $comment = new OrderComment();
+                $validator = Validator::make($request->all(), [
+                    'description' => 'nullable|string|max:100|min:5',
+                ], [
+                    'description.max' => 'حداقل تعداد حروف توضیحات باید 5 عدد باشد',
+                    'description.min' => 'حداکثر تعداد حروف توضیحات باید 100 عدد باشد',
+                    'description.string' => 'توضیحات باید شامل رشته باشد.',  
+                ]);
+
+                if ($validator->fails()) {
+                    throw new HttpResponseException(response()->json([
+                        'success' => false,
+                        'message' => ' خطا اعتبارسنجی!',
+                        'statusCode' => 422,
+                        'errors' => $validator->errors(),
+                        'data' => null
+                    ], 422));
+                }
+                $comment->user_id = $user->id;
+
+                $comment->role = $userRole;
+                $comment->order_id = $order->id;
+                $comment->description = $request->description;
+                $comment->save();
+            }
+            
             $order->status = $request->status;
             $order->save();
+            $roleLog = new RoleLog();
+            $roleLog->ip = $request->ip();
+            $roleLog->user_id = $user->id;
+            $userRole = $user->getJWTCustomClaims()['role'] ?? null;
+            $roleLog->role = $userRole;
+            $roleLog->loggable_type = "App\Admin\Order";
+            $roleLog->loggable_id = $order->id;
+            $roleLog->description = "وضعیت سفارش تغییر کرد ";
+            $roleLog->save();
             $result = DB::table('order_product')
                 ->where('order_id', $order->id)
                 ->whereIn('pay_type', ['day_30', 'day_60', 'day_90', 'day_120', 'day_45', 'day_75', 'day_180']) // فقط day_* ها
@@ -1251,10 +1594,7 @@ class OrderController extends Controller
             ]);
         }
         
-        
     }
-
-
     public function FinalApproval(Order $order){
         $user = $order->user;
 
@@ -1321,6 +1661,7 @@ class OrderController extends Controller
             'order_product.quantity',
             'order_product.size',
             'order_product.color',
+            'order_product.brand',
             'order_product.pay_type',
             'order_product.product_price',
             'order_product.price as total_price',
@@ -1410,6 +1751,7 @@ class OrderController extends Controller
             'order_product.quantity',
             'order_product.size',
             'order_product.color',
+            'order_product.brand',
             'order_product.pay_type',
             'order_product.product_price',
             'order_product.price as total_price',

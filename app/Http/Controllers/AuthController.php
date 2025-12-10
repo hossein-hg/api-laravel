@@ -106,8 +106,8 @@ class AuthController extends Controller
 
 
 
-            $category = $user->category->name;
-            $user->categoryName = $category ?? 'یک';
+            $category = $user->category ? $user->category->name : null;
+            $user->categoryName = $category ?? '1';
             return response()->json([
                 'data' => [
                     'user' => $user  
@@ -189,14 +189,13 @@ class AuthController extends Controller
         }
         else{
             $userCategory = UserCategory::where('name',"1")->first();
-            // ایجاد کاربر با اطلاعات موجود در OTP
             $user = User::create([
                 'name' => $otp->name,
                 'phone' => $otp->phone,
                 'gender' => $otp->gender,
                 'category_id' => $userCategory ? $userCategory->id : "1",
-                // 'password' => bcrypt(Str::random(8)) // رمز عبور تصادفی
             ]);
+            $user->assignRole('user');
 
            
         }
@@ -207,8 +206,8 @@ class AuthController extends Controller
       
         
 
-
-       $category = $user->category->name;
+       
+       $category = $user->category ? $user->category->name : null;
        $user->categoryName = $category ?? 'یک'; 
         $otp->delete(); // حذف OTP پس از استفاده
 

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AddressController;
 use App\Http\Controllers\Admin\CartController;
+use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductsController;
 use App\Http\Controllers\Admin\UserCategoryController;
@@ -32,7 +33,7 @@ Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
 Route::get('product', [ProductsController::class, 'index'])->middleware(JWTOptional::class);
 Route::get('product/{product:name}',[ProductsController::class,'show'])->middleware(JWTOptional::class);
 
-
+ 
 Route::get('home', [HomeController::class, 'index']);
 
 
@@ -124,7 +125,7 @@ Route::middleware('auth:api')->group(function () {
         Route::post('users/delete', [UserController::class, 'destroy'])
             // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
         ;
-        Route::get('users/show', [UserController::class, 'show'])
+        Route::get('users/show/{user}', [UserController::class, 'show'])
             // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
         ;
         Route::get('user-categories', [UserCategoryController::class, 'index'])
@@ -139,6 +140,23 @@ Route::middleware('auth:api')->group(function () {
         Route::post('user-categories/delete', [UserCategoryController::class, 'delete'])
             // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
         ;
+
+        Route::get('product-categories', [GroupController::class, 'index'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+        Route::post('product-categories/store', [GroupController::class, 'store'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+        Route::post('product-categories/update', [GroupController::class, 'update'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+        Route::post('product-categories/delete', [GroupController::class, 'destroy'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+        Route::get('product-categories/show/{group}', [GroupController::class, 'show'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+        Route::post('upload-image', [GroupController::class, 'uploadImage']);
 
     });
     
@@ -341,7 +359,7 @@ Route::get('get-footer',function(){
     ]);
 });
 Route::get('get-header', function(){
-    $categories = Group::all();
+    $categories = Group::where('level',1)->get();
     $array = [];
     foreach ($categories as $category){
         $arr = [
@@ -363,23 +381,24 @@ Route::get('get-header', function(){
         ];
         array_push($array, $arr);
     }
-    $groups = Group::all();
+    $groups = Group::where('level', 1)->get();
 
     $output = [];
 
     foreach ($groups as $group) {
-        $products = $group->products;
+
+        $products = Group::where('parent',$group->id)->get();
         $children = $products->map(function ($product) {
             return [
                 'id' => $product->id,
                 'faName' => $product->name,
-                'path' => $product->slug ?? $product->name, // اگر slug دارید، استفاده کنید
+                'path' =>  $product->name,
             ];
         })->toArray();
         $output[] = [
             'id' => $group->id,
             'faName' => $group->name,
-            'path' => $group->name,
+            // 'path' => $group->name,
             'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" fill-rule="evenodd" d="M464 144c8.837 0 16 7.163 16 16v304c0 8.836-7.163 16-16 16H160c-8.837 0-16-7.164-16-16V160c0-8.837 7.163-16 16-16zm-52 68H212v200h200zm493.333 87.686c6.248 6.248 6.248 16.379 0 22.627l-181.02 181.02c-6.248 6.248-16.378 6.248-22.627 0l-181.019-181.02c-6.248-6.248-6.248-16.379 0-22.627l181.02-181.02c6.248-6.248 16.378-6.248 22.627 0zm-84.853 11.313L713 203.52L605.52 311L713 418.48zM464 544c8.837 0 16 7.164 16 16v304c0 8.837-7.163 16-16 16H160c-8.837 0-16-7.163-16-16V560c0-8.836 7.163-16 16-16zm-52 68H212v200h200zm452-68c8.837 0 16 7.164 16 16v304c0 8.837-7.163 16-16 16H560c-8.837 0-16-7.163-16-16V560c0-8.836 7.163-16 16-16zm-52 68H612v200h200z"/></svg>',
 
             'children' => $children

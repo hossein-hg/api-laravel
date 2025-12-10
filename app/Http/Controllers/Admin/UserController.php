@@ -95,9 +95,7 @@ class UserController extends Controller
                 case 'company_name':
                     $query->orderBy('company_name', 'desc'); // قیمت نزولی
                     break;
-                case 'user_type':
-                    $query->orderBy('user_type', 'desc'); // قیمت نزولی
-                    break;
+                
                 case 'natinal_code':
                     $query->orderBy('natinal_code', 'desc'); // قیمت نزولی
                     break;
@@ -158,9 +156,9 @@ class UserController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Request $request)
+    public function show(User $user)
     {
-        $user = User::findOrFail($request->id);
+       
         return response()->json([
             'data'=> [
                 'user'=> new UserResource($user),

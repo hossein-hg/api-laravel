@@ -13,6 +13,7 @@ class UserCategory extends Model
     protected $fillable = [
         'name',
         'user_id',
-        'max_credit'
+        'max_credit',
+        'percent',
     ] ;
 }

@@ -76,8 +76,7 @@ class User extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims()
     {
         return [
-            'role' => $this->getRoleNames()->first() ?? 'user',  // role اول (یا پیش‌فرض 'user')
-            // می‌تونی claims دیگه‌ای مثل 'permissions' یا 'email_verified' هم اضافه کنی
+            'role' => $this->getRoleNames()->first() ?? 'user', 
         ];
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AddressRequest;
 use App\Http\Resources\AddressResource;
 use App\Models\Admin\Address;
 use Illuminate\Http\Request;
@@ -24,7 +25,7 @@ class AddressController extends Controller
 
     }
 
-    public function store(Request $request){
+    public function store(AddressRequest $request){
         
        
         $address = Address::create([
@@ -52,7 +53,7 @@ class AddressController extends Controller
         }
     }
 
-    public function update(Request $request)
+    public function update(AddressRequest $request)
     {
         
         $address = Address::findOrFail($request->id);

@@ -27,8 +27,8 @@ class HomeController extends Controller
             ->orderBy('id', 'desc')
             ->take(6)
             ->get();    
-
-        $best_groups = Group::with('products')->orderBy('id','desc')->get();  
+        
+        $best_groups = Group::with('products')->where('level',2)->take(6)->orderBy('id','desc')->get();  
         $setting = Setting::find(1);
         $topBanners = Banner::where('type',1)->get();
         $banners = Banner::where('type',2)->get();

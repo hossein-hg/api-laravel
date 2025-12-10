@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
-class UserCategoryCollection extends ResourceCollection
+class GroupCollection extends ResourceCollection
 {
     /**
      * Transform the resource collection into an array.
@@ -14,14 +14,11 @@ class UserCategoryCollection extends ResourceCollection
      */
     public function toArray(Request $request): array
     {
-        
+
         return [
             'data' => [
-                'results' => UserCategoryResource::collection($this->collection),
-                'hasPrevPage' => !$this->onFirstPage(),
-                'hasNextPage' => $this->hasMorePages(),
-                'page' => $this->currentPage(),
-                'total_page' => $this->lastPage(),
+                'results' => GroupResource::collection($this->collection),
+                
             ],
             'statusCode' => 200,
             'message' => 'موفقیت آمیز',

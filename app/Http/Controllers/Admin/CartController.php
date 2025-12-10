@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
+use App\Models\Admin\CartProduct;
 use App\Models\Admin\Product;
 use App\Http\Controllers\Controller;
 use DB;
@@ -28,6 +29,9 @@ class CartController extends Controller
             $color = $product->pivot->color;
             $size = $product->pivot->size;
             $brand = $product->pivot->brand;
+            $sizes = $product->sizes->pluck('size');
+            $colors = $product->colors->pluck('color');
+            $brands = $product->sizes->pluck('name');
             return [
                 "id" => $product->id,
                 "faName" => $product->name,
@@ -41,7 +45,10 @@ class CartController extends Controller
                 "size" => $size ?? null,
                 "brand" => $brand ?? null,
                 'selectedPrice' => $product->pivot->pay_type,
-                "discount" => $product->discount ?? 0,
+                "discount" => $product->activeOffer()['percent'] ?? 0,
+                "brands"=> $brands,
+                "colors"=> $colors,
+                "sizes"=> $sizes,
             ];
         });
 
@@ -61,6 +68,9 @@ class CartController extends Controller
                 'color' => $i['color'],
                 'size' => $i['size'],
                 'brand' => $i['brand'],
+                'sizes' => $i['sizes'],
+                'brands' => $i['brands'],
+                'colors' => $i['colors'],
                 'selectedPrice' => $i['selectedPrice'],
                 'discount' => $i['discount'],
                 // 'alertMessage' => $i['alertMessage'],
@@ -114,10 +124,9 @@ class CartController extends Controller
 
     public function update(Request $request)
     {
-
-         foreach ($request->all() as  $req) {
+         
             $validatedValues = ['credit', 'cash'];
-            $selectedPrice = $req['selectedPrice'] ?? '';
+            $selectedPrice = $request['selectedPrice'] ?? '';
             if (!in_array($selectedPrice, $validatedValues) && !preg_match('/^day_\d+$/', $selectedPrice)) {
                 return response()->json([
                     'data' => null,
@@ -127,12 +136,14 @@ class CartController extends Controller
                     'errors' => null
                 ]); 
             }
-        }
-       
-        foreach ($request->all() as $key => $request) {
+
+        
+
+        
             
                 $product = Product::findOrFail($request['id']);
-
+                
+                $is_exist = false;
                 $count = $request['count'];
 
                 $all_request[] = [
@@ -180,13 +191,46 @@ class CartController extends Controller
                 ['user_id' => $user_id],
                 ['count' => 0, 'total_price' => 0]
             );
+            
+            $getColor = $selectedColor ? $selectedColor->color : null;
+            $getSize = $selectedSize ? $selectedSize->size : null;
+            $getBrand = $selectedBrand ? $selectedBrand->name : null;
+
+            // dd($getColor, $getSize, $getBrand);
+            
+            $existingProductInPivot = CartProduct::where('product_id', $product->id)->where('cart_id',$cart->id)
+                ->where(function ($query) use ($getColor) {
+                    if (is_null($getColor)) {
+                        $query->whereNull('color');
+                    } else {
+                        $query->where('color', $getColor);
+                    }
+                })
+                ->where(function ($query) use ($getSize) {
+                    if (is_null($getSize)) {
+                        
+                        $query->whereNull('size');
+                    } else {
+                        $query->where('size', $getSize);
+                    }
+                })
+                ->where(function ($query) use ($getBrand) {
+                    if (is_null($getBrand)) {
+                        $query->whereNull('brand');
+                    } else {
+                        $query->where('brand', $getBrand);
+                    }
+                })
+                ->first();
+                
            
-            $existingProduct = $cart->products()->find($product->id);
+
+            // dd($existingProduct);
             
                 if ($product->warehouseInventory < ($count * $product->ratio)) {
                     $inventory = false;
-                    if ($existingProduct) {
-                            $count = $existingProduct->quantity;
+                    if ($existingProductInPivot) {
+                            $count = $existingProductInPivot->quantity;
                     }
                     else{
                         $count = 1;
@@ -194,129 +238,85 @@ class CartController extends Controller
                 }
             
             $new_price = price($product, $selectedColor , $selectedBrand , $selectedSize, $request['selectedPrice'], $count);
-            
+            $selectedColorValue = $selectedColor ? $selectedColor->color : null;
+            $selectedSizeValue = $selectedSize ? $selectedSize->size : null;
+            $selectedBrandValue = $selectedBrand ? $selectedBrand->name : null;
+       
             if ($inventory){
              
+                
+                if ($existingProductInPivot) {
 
-                if ($existingProduct) {
-                    $cart->products()->updateExistingPivot($product->id, [
-                        'quantity' => $count,
-                        'ratio' => $product->ratio,
-                        'price' => $new_price['number_total_product_price'], 
-                        'color'=> $selectedColor ? $selectedColor->color : null,                      
-                        'size'=> $selectedSize ? $selectedSize->size  : null,
-                        'brand' => $selectedBrand ? $selectedBrand->name : null,
-                        'product_price' => $new_price['number_one_product'],
-                        'pay_type'=> $request['selectedPrice']                      
-                    ]);
+                
+                    if ($selectedColorValue == $existingProductInPivot->color and $selectedBrandValue == $existingProductInPivot->brand and $selectedSizeValue == $existingProductInPivot->size and  $cart->id == $existingProductInPivot->cart_id) {
+                    
+                        $is_exist = true;
+                    }
+                    $existingProductInPivot->quantity = $count;
+                    
+                    $existingProductInPivot->price = $new_price['number_total_product_price'];
+                    $existingProductInPivot->color = $selectedColor ? $selectedColor->color : null;
+                    $existingProductInPivot->size = $selectedSize ? $selectedSize->size : null;
+                    $existingProductInPivot->brand = $selectedBrand ? $selectedBrand->name : null;
+                    $existingProductInPivot->product_price = $new_price['number_one_product'];
+                    $existingProductInPivot->pay_type = $request['selectedPrice'];
+                    $existingProductInPivot->save();
+                    $existingProductInPivot->refresh();
+                    
                 } else {
-                    $cart->products()->attach($product->id, [
-                        'quantity' => $count,
-                        'ratio' => $product->ratio,
-                        'price' => $new_price['number_total_product_price'],
-                        'color' => $selectedColor ? $selectedColor->color : null,
-                        'size' => $selectedSize ? $selectedSize->size : null,
-                        'brand' => $selectedBrand ? $selectedBrand->name : null,
-                        'product_price' => $new_price['number_one_product'],
-                        'pay_type' => $request['selectedPrice']
-
-                    ]);
+                
+                    $new_cart_order_record = new CartProduct();
+                    $new_cart_order_record->cart_id = $cart->id;
+                    $new_cart_order_record->quantity = $count;
+                    $new_cart_order_record->ratio = $product->ratio;
+                    $new_cart_order_record->price = $new_price['number_total_product_price'];
+                    $new_cart_order_record->color = $selectedColor ? $selectedColor->color : null;
+                    $new_cart_order_record->size = $selectedSize ? $selectedSize->size : null;
+                    $new_cart_order_record->brand = $selectedBrand ? $selectedBrand->name : null;
+                    $new_cart_order_record->product_price = $new_price['number_one_product'];
+                    $new_cart_order_record->pay_type = $request['selectedPrice'];
+                    $new_cart_order_record->product_id = $product->id;
+                    $new_cart_order_record->save();
+                    $new_cart_order_record->refresh();
                 }
 
             }
             else{
-                if ($existingProduct) {
+                if ($existingProductInPivot) {
+                    $existingProductInPivot->inventory = 0;
+                    $existingProductInPivot->pay_type = $request['selectedPrice'];
+                    $existingProductInPivot->save();
+                    $existingProductInPivot->refresh();
+                    if ($selectedColorValue == $existingProductInPivot->color and $selectedBrandValue == $existingProductInPivot->brand and $selectedSizeValue == $existingProductInPivot->size and $cart->id == $existingProductInPivot->cart_id) {
+                        $is_exist = true;
+                    }
                     
-                    $cart->products()->updateExistingPivot($product->id, [
-                        'inventory' => 0,
-                        'pay_type' => $request['selectedPrice']
-                       
-                    ]);
                 }
                 else{
-                
-                    $cart->products()->attach($product->id, [
-                        'quantity' => 1,
-                        'price' => $new_price['number_total_product_price'],
-                        'ratio' => $product->ratio,
-                        'inventory' => 0,
-                        'color' => $selectedColor ? $selectedColor->color : null,
-                        'size' => $selectedSize ? $selectedSize->size : null,
-                        'brand' => $selectedBrand ? $selectedBrand->name : null,
-                        'product_price' => $new_price['number_one_product'],
-                        'pay_type' => $request['selectedPrice']
-
-                    ]);
+                    // $new_cart_order_record = new CartProduct();
+                    // $new_cart_order_record->quantity = 1;
+                    // $new_cart_order_record->cart_id = $cart->id;
+                    // $new_cart_order_record->product_id = $product->id;
+                    // $new_cart_order_record->ratio = $product->ratio;
+                    // $new_cart_order_record->price = $new_price['number_total_product_price'];
+                    // $new_cart_order_record->color = $selectedColor ? $selectedColor->color : null;
+                    // $new_cart_order_record->size = $selectedSize ? $selectedSize->size : null;
+                    // $new_cart_order_record->brand = $selectedBrand ? $selectedBrand->name : null;
+                    // $new_cart_order_record->product_price = $new_price['number_one_product'];
+                    // $new_cart_order_record->pay_type = $request['selectedPrice'];
+                    // $new_cart_order_record->inventory = 0;
+                    // $new_cart_order_record->save();
+                    // $new_cart_order_record->refresh();
+                    
                 }     
-            }  
-            
-        }
+            }
+
+
         
         $reqMap = collect($all_request)->keyBy('id');
         
         // آماده سازی خروجی محصولات
-        $items = $cart->products->map(function ($product, $index) use ($reqMap) {
-            // dd($index);
-            $count = $product->pivot->quantity;
-         
-            $inventory = $product->pivot->inventory;
-            $total_price = $product->pivot->price;
-            $color = $product->pivot->color;
-            
-            $product_price = $product->pivot->product_price;
-            $size = $product->pivot->size;
-            $brand = $product->pivot->brand;
-            $price = $product->price;
-            $discount = $product->activeOffer()['percent'];
-            if ($discount > 0) {
-                $price = $price * ((100 - $discount) / 100);
-            }
-            return [
-                "id" => $product->id,
-                "faName" => $product->name,
-                "url" => $product->url,
-                "price" => (int) $product_price,
-                "cover" => $product->cover,
-                "count" => $count,
-                "totalPrice" => (int) $total_price,
-                "ratio" => $product->ratio,
-                "discount" => $discount,
-                "inventory" => $inventory,
-                'color'=> $color,
-                'size'=> $size,
-                'brand'=> $brand,
-                'selectedPrice'=> $product->pivot->pay_type,
-                "alertMessage" => $inventory == 0 ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
-            ];
-        });
-
-
-        $cardCount = $items->where('inventory', '>', 0)->where('count', '<>', 0)->count();
-        $cart->count = $cardCount;
-        $cart->save();
-        $itemsForOutput = $items->map(function ($i) {
-            return [
-                'id' => $i['id'],
-                'faName' => $i['faName'],
-                'url' => $i['url'],
-                'price' => (string) number_format($i['price']),
-                'cover' => $i['cover'],
-                'count' => (int) $i['count'],
-                'totalPrice' => (string) number_format($i['totalPrice']),
-                'ratio' => $i['ratio'],
-                'discount' => $i['discount'],
-                'inventory' => $i['inventory'],
-                'color' => $i['color'],
-                'size' => $i['size'],
-                'brand' => $i['brand'],
-                'selectedPrice' => $i['selectedPrice'],
-                'alertMessage' => $i['alertMessage'],
-            ];
-        })->values();
-
-
-
-
+        
 
         // محاسبه count و total_price کل سبد
         $cartData = $cart->products()->get()->reduce(function ($carry, $item) {
@@ -335,11 +335,7 @@ class CartController extends Controller
             'inventory'=>1
         ]);
        
-        $credit_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type','credit')->count();
-        $cash_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type','cash')->count();
-        $check_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type','LIKE','%day_%')->count();
-        $credit_total_price = number_format(DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'credit')->sum('price'));
-        $cash_total_price = number_format(DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'cash')->sum('price'));
+        
         $result = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'LIKE', '%day_%')
             ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
             ->groupBy('pay_type')
@@ -364,44 +360,28 @@ class CartController extends Controller
        
         $cart = $cart->fresh();
         
-        if (!$cart){
-            return response()->json([
-                'data' =>
-                    null
-                ,
-                'message' => 'سبد خرید خالی است',
-                'statusCode' => 200,
-                'success' => true,
-                'errors' => null
-            ]);
-        }
-        return response()->json([
-            'data' => 
-                [
-                    'id'=> $cart->id,
-                    'cartCount' => $countCart,
-                    'amount' => (string) $amount,
-                    'postPay' => "120,000",
-                    'creditCount'=> $credit_count,
-                    'checkesCount'=> $check_count,
-                    'cashCount'=> $cash_count,
-                    'checkes'=>$checkes ?? null,
-                    'credit_total_price'=> $credit_total_price,
-                    'cash_total_price'=> $cash_total_price,
-                    'items' => $itemsForOutput,
-                    
-                ]
-                ,
-            'message' => 'محصول اضافه شد',
+        
+        
+        return  response()->json([
+            'data'=>[
+                'existInCart' => $is_exist,
+
+                "alertMessage" => $inventory == 0 ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
+            ],
             'statusCode' => 200,
             'success' => true,
+            'message' => 'موفقیت آمیز',
             'errors' => null
+
         ]);
+       
+       
     }
   
 
 
     public function remove(Request $request){
+        
         $user_id = auth()->user()->id;
         $cart = Cart::where("user_id", $user_id)->first();
         if (!$cart){
@@ -423,10 +403,15 @@ class CartController extends Controller
                 'message' => 'سبد خرید شما خالیست',
                 'errors' => null
             ]);
-
         }
         $product = Product::find($request->id);
-        $cart->products()->detach($product->id);
+
+        // $cart->products()->detach($product->id);
+        $cart_product_item = CartProduct::where('cart_id',$cart->id)->where('product_id',$product->id)->where('brand', $request->brand)->where('color', $request->color)->where('size', $request->size)->first();
+        if ($cart_product_item){
+            $cart_product_item->delete();
+        }
+        
         $cart->load('products');
         if ($cart->products->count() == 0){
             $cart->delete();
@@ -446,6 +431,7 @@ class CartController extends Controller
         }, ['count' => 0, 'total_price' => 0]);
 
         // $cart->count = $cartData['count'];
+        
         $cart->total_price = $cartData['total_price'];
         $cart->save();
 
@@ -460,35 +446,25 @@ class CartController extends Controller
         // $cart->count = $cartData['count'];
         $cart->total_price = $cartData['total_price'];
         $cart->save();
-        $amount = number_format($cart->total_price);
+        
 
         DB::table('cart_product')->where('cart_id', $cart->id)->where('inventory', 0)->delete();
         DB::table('cart_product')->where('cart_id', $cart->id)->where('quantity', '<>', 0)->update([
             'inventory' => 1
         ]);
 
-        $credit_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'credit')->count();
-        $cash_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'cash')->count();
-        $check_count = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'LIKE', '%day_%')->count();
-        $credit_total_price = number_format(DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'credit')->sum('price'));
-        $cash_total_price = number_format(DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'cash')->sum('price'));
+        
         $result = DB::table('cart_product')->where('cart_id', $cart->id)->where('pay_type', 'LIKE', '%day_%')
             ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
             ->groupBy('pay_type')
             ->get();
 
-        $checkes = $result->map(function ($item) {
-            return [
-
-                'pay_type' => $item->pay_type,
-                'total_price' => number_format($item->total_price)
-            ];
-        });
+        
 
 
 
         // $checksCount = 
-        $countCart = DB::table('cart_product')->where('cart_id', $cart->id)->count();
+        
         
         // آماده سازی خروجی محصولات
         $items = $cart->products->map(function ($product) {
@@ -513,48 +489,17 @@ class CartController extends Controller
         });
 
         $cardCount = $items->count();
-        
+       
         $cart->count = $cardCount;
         $cart->save();
-        $itemsForOutput = $items->map(function ($i) {
-            return [
-                'id' => $i['id'],
-                'faName' => $i['faName'],
-                'url' => $i['url'],
-                'price' => (string) number_format($i['price']),
-                'cover' => $i['cover'],
-                'count' => (int) $i['count'],
-                'totalPrice' => (string) number_format($i['totalPrice']),
-                'ratio' => $i['ratio'],
-                'color' => $i['color'],
-                'size' => $i['size'],
-                'selectedPrice' => $i['selectedPrice'],
-                
-                'discount' => $i['discount'],
-                // 'alertMessage' => $i['alertMessage'],
-            ];
-        })->values();
-
-        $amount = number_format($cart->total_price);
+        
 
         return response()->json([
             'data' => 
-                [
-                'id' => $cart->id,
-                'cartCount' => $countCart,
-                'amount' => (string) $amount,
-                'postPay' => "120,000",
-                'creditCount' => $credit_count,
-                'checkesCount' => $check_count,
-                'cashCount' => $cash_count,
-                'checkes' => $checkes ?? null,
-                'credit_total_price' => $credit_total_price,
-                'cash_total_price' => $cash_total_price,
-                'items' => $itemsForOutput,
-                ]
+                []
                 ,
               'message' => 'محصول حذف شد',
-                'statusCode' => 200,
+              'statusCode' => 200,
                 'success' => true,
                 'errors' => null
         ]);

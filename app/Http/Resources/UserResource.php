@@ -20,7 +20,7 @@ class UserResource extends JsonResource
             "phone"=> $this->phone,
             "telephone"=> $this->telephone,
             "gender"=> $this->gender,
-            "category_name"=> $this->category->name ?? "1",
+            "categoryName"=> $this->category ? $this->category->name : "1",
             "avatar"=> $this->avatar,
             "user_type"=> $this->user_type,
             "company_name"=> $this->company_name,
@@ -28,6 +28,7 @@ class UserResource extends JsonResource
             "economic_code"=> $this->economic_code,
             "registration_number"=> $this->registration_number,
             "is_active"=> $this->is_active == 1 ? true : false,
+            'created_at' => $this->created_at ? $this->created_at->format('Y-m-d H:i:s') : '',
         ];
     }
 }

@@ -12,16 +12,20 @@ use Illuminate\Http\Request;
 class UserCategoryController extends Controller
 {
     public function index(){
+        
         $query = UserCategory::query()->with('checkRules');
         $userCategories = $query->paginate(10);
+       
         return new UserCategoryCollection($userCategories);
     }
 
     public function store(Request $request){
         
         $trans = DB::transaction(function () use ($request) {
+            $count = UserCategory::count() + 1;
+            $count = (string) $count;
             $category = UserCategory::create([
-                'name' => $request->category_name,
+                'name' => $count,
                 'max_credit' => $request->max_credit,
                 'percent' => $request->percent,
             ]);
@@ -175,9 +179,9 @@ class UserCategoryController extends Controller
 
                 switch ($firstValue) {
                     case 'day_30_percent':
-
+                        $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '30')->first();
                         if ($values[0]) {
-                            $check_rule = CheckRules::where('category_user_id',$category->id)->where('term_days','30')->first();
+                           
                             if (!$check_rule) {
                                 $check_rule = new CheckRules();   
                             }
@@ -188,10 +192,16 @@ class UserCategoryController extends Controller
                             $check_rule->save();
 
                         }
+                        else{
+                            if($check_rule){
+                                $check_rule->delete();
+                            }
+                            
+                        }
                     case 'day_45_percent':
-
+                        $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '45')->first();
                         if ($values[0]) {
-                            $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '45')->first();
+                           
                             if (!$check_rule) {
                                 $check_rule = new CheckRules();
                             }
@@ -201,13 +211,18 @@ class UserCategoryController extends Controller
                             $check_rule->name = "45 روزه";
                             $check_rule->save();
 
+                        } else {
+                            if ($check_rule) {
+                                $check_rule->delete();
+                            }
                         }
                         break;
 
                     case 'day_60_percent':
-
+                        
+                        $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '60')->first();
                         if ($values[0]) {
-                            $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '60')->first();
+                            
                             if (!$check_rule) {
                                 $check_rule = new CheckRules();
                             }
@@ -217,12 +232,16 @@ class UserCategoryController extends Controller
                             $check_rule->name = "60 روزه";
                             $check_rule->save();
 
+                        } else {
+                            if ($check_rule) {
+                                $check_rule->delete();
+                            }
                         }
                         break;
                     case 'day_75_percent':
-
+                        $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '75')->first();
                         if ($values[0]) {
-                            $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '75')->first();
+                            
                             if (!$check_rule) {
                                 $check_rule = new CheckRules();
                             }
@@ -233,13 +252,17 @@ class UserCategoryController extends Controller
                             $check_rule->save();
 
 
+                        } else {
+                            if ($check_rule) {
+                                $check_rule->delete();
+                            }
                         }
                         break;
                     case 'day_90_percent':
-
+                        $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '90')->first();
                         if ($values[0]) {
                             
-                            $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '90')->first();
+                            
                             if (!$check_rule) {
                                 $check_rule = new CheckRules();
                             }
@@ -249,13 +272,17 @@ class UserCategoryController extends Controller
                             $check_rule->name = "90 روزه";
                             $check_rule->save();
 
+                        } else {
+                            if ($check_rule) {
+                                $check_rule->delete();
+                            }
                         }
                         break;
                     case 'day_120_percent':
-
+                        $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '120')->first();
                         if ($values[0]) {
                            
-                            $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '120')->first();
+                            
                            
                             if (!$check_rule) {
                                 $check_rule = new CheckRules();
@@ -266,12 +293,16 @@ class UserCategoryController extends Controller
                             $check_rule->term_days = 120;
                             $check_rule->save();
 
+                        } else {
+                            if ($check_rule) {
+                                $check_rule->delete();
+                            }
                         }
-
+                        break;
                     case 'day_180_percent':
-
+                        $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '180')->first();
                         if ($values[0]) {
-                            $check_rule = CheckRules::where('category_user_id', $category->id)->where('term_days', '180')->first();
+                            
                             if (!$check_rule) {
                                 $check_rule = new CheckRules();
                             }
@@ -281,6 +312,10 @@ class UserCategoryController extends Controller
                             $check_rule->name = "180 روزه";
                             $check_rule->save();
 
+                        } else {
+                            if ($check_rule) {
+                                $check_rule->delete();
+                            }
                         }
                         break;
 

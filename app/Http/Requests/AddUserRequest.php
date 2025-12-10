@@ -28,7 +28,7 @@ class AddUserRequest extends FormRequest
             return [
                 "name"=> ["required","string"],
                 "phone"=> ["required","string","regex:/^09[0-9]{9}$/"],
-                "telephone"=> ["required","string","regex:/^0\d{2,3}-?\d{7}$/"],
+                "telephone"=> ["string","regex:/^0\d{2,3}-?\d{7}$/"],
                 "gender"=> ["required","in:0,1,2"],
                 "category_id"=> ["required","exists:user_categories,id"],
                 "user_type"=> ["required","string", "in:regular,legal"],
@@ -44,7 +44,7 @@ class AddUserRequest extends FormRequest
             return [
                 "name" => ["required", "string"],
                 "phone" => ["required", "string", Rule::unique('users', 'phone')->ignore($this->id, 'id'), "regex:/^09[0-9]{9}$/"],
-                "telephone" => ["required", "string", "regex:/^0\d{2,3}-?\d{7}$/"],
+                "telephone" => [ "string", "regex:/^0\d{2,3}-?\d{7}$/"],
                 "gender" => ["required", "in:0,1,2"],
                 "category_id" => ["required", "exists:user_categories,id"],
                 "user_type" => ["required", "string", "in:regular,legal"],

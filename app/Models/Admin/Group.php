@@ -17,5 +17,14 @@ class Group extends Model
         return $this->hasMany(Product::class);
     }
 
+    protected $fillable = [
+        'name',
+        'level',
+        'parent',
+        'status',
+        'url',
+        'image',
+    ];
+
 
 }
