@@ -50,6 +50,7 @@ class Product extends Model
         'warehouseInventory',
         'satisfaction',
         'additionalInformation',
+        'group_id',
     ];
 
     public function category(){
@@ -80,8 +81,10 @@ class Product extends Model
 
     public function filtersWithSelectedOptions()
     {
-        $filters = $this->group->filters ?? null;
+        $filters = $this->group ? $this->group->filters : null;
+        
         $selectedOptions = $this->options()->get()->keyBy('pivot.filter_id');
+        
         $result = [];
         if ($filters) {
             foreach ($filters as $filter) {

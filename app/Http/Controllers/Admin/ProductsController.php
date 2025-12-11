@@ -1,8 +1,11 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
+use App\Http\Requests\ProductRequest;
 use App\Http\Resources\ProductListResource;
 use App\Http\Resources\ProductResource;
+use App\Models\Admin\Image;
+use App\Models\Admin\Offer;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductCollection;
@@ -145,10 +148,40 @@ class ProductsController extends Controller
      
     }
 
-    public function latestProduct(){
+    public function store(ProductRequest $request){
+        $product = new Product();
         
-      
-        
+        $product->name = $request->name;
+        $product->group_id = $request->category_id;
+        $product->price = $request->price;
+        $product->description = $request->description;
+        $product->inventory = $request->inventory;
+        $product->ratio = $request->ratio;
+        $product->warehouseInventory = $request->warehouseInventory;
+        $product->cover = $request->cover;
+        $product->tags = $request->tags;
+        $product->shortDescription = $request->shortDescription;
+        $product->additionalInformation = $request->additionalInformation;
+        $product->save();
+        if ($request->filled('images')){
+            foreach ($request->images as $imageRequest) {
+                $image = new Image();
+                $image->product_id = $product->id;
+                $image->path = $imageRequest; 
+                $image->save();
+            }
+        }
+
+        if ($request->filled('discount')){
+            $offer = new Offer();
+            $offer->percent = $request->discount;
+            $offer->product_id = $product->id;
+            $offer->start_time = $request->discount_start_time; 
+            $offer->end_time = $request->discount_end_time; 
+            
+            $offer->save();
+        }
+
     }
 
 

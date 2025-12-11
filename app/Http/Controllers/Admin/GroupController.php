@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Requests\StoreGroupRequest;
 use App\Http\Requests\UpdateGroupRequest;
+use App\Models\Admin\Brand;
 use App\Models\Admin\Group;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -15,7 +16,7 @@ use App\Http\Resources\GroupCollection;
 class GroupController extends Controller
 {
    public function index(){
-       $groups = Group::all();
+       $groups = Group::whereNull('parent_id')->get();
         return new GroupCollection($groups);
    }
 
@@ -23,15 +24,28 @@ class GroupController extends Controller
         $group = new Group();
         $group->image = $request->image;
         $group->name = $request->name;
-        $group->parent = $request->parent;
+        $group->parent_id = $request->parent_id;
         $group->url = $request->name;
         if($request->parent){
             $group->level = 2;
+
         }
         else{
             $group->level = 1;
         }
         $group->save();
+        if ($request->brands){
+            foreach ($request->brands as $brand){
+                $brandObj = new Brand();
+                $brandObj->group_id = $group->id;
+              
+                $brandObj->name = $brand['fa_name'];
+                $brandObj->en_name = $brand['en_name'];
+                $brandObj->save();
+
+                
+            }
+        }
         return [
                 'data' => null,
                 'statusCode' => 200,
@@ -51,7 +65,7 @@ class GroupController extends Controller
             $group->image = $request->image;
         }
         $group->name = $request->name;
-        $group->parent = $request->parent;
+        $group->parent_id = $request->parent_id;
         $group->url = $request->name;
        
         if ($request->parent) {

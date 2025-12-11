@@ -5,7 +5,8 @@ namespace App\Http\Requests;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Contracts\Validation\Validator;
 class AddUserRequest extends FormRequest
 {
     /**
@@ -23,12 +24,12 @@ class AddUserRequest extends FormRequest
      */
     public function rules(): array
     {   
-        $user = User::where('phone',$this->phone)->first();
-        if ($user) {
+        
+        if ($this->method() === "POST") {
             return [
-                "name"=> ["required","string"],
-                "phone"=> ["required","string","regex:/^09[0-9]{9}$/"],
-                "telephone"=> ["string","regex:/^0\d{2,3}-?\d{7}$/"],
+                "name"=> ["required","string",'min:3','max:25'],
+                "phone"=> ["required","string","regex:/^09[0-9]{9}$/", Rule::unique('users', 'phone')],
+                "telephone"=> ["string","regex:/^0\d{2,3}-?\d{7}$/",'required_if:user_type,legal'],
                 "gender"=> ["required","in:0,1,2"],
                 "category_id"=> ["required","exists:user_categories,id"],
                 "user_type"=> ["required","string", "in:regular,legal"],
@@ -41,10 +42,11 @@ class AddUserRequest extends FormRequest
             ];
         }
         else{
+            
             return [
-                "name" => ["required", "string"],
-                "phone" => ["required", "string", Rule::unique('users', 'phone')->ignore($this->id, 'id'), "regex:/^09[0-9]{9}$/"],
-                "telephone" => [ "string", "regex:/^0\d{2,3}-?\d{7}$/"],
+                "name" => ["required", "string", 'min:3', 'max:25'],
+                "phone" => ["required", "string", "regex:/^09[0-9]{9}$/", Rule::unique('users', 'phone')->ignore($this->id, 'id')],
+                "telephone" => ["string", "regex:/^0\d{2,3}-?\d{7}$/",'required_if:user_type,legal'],
                 "gender" => ["required", "in:0,1,2"],
                 "category_id" => ["required", "exists:user_categories,id"],
                 "user_type" => ["required", "string", "in:regular,legal"],
@@ -52,9 +54,51 @@ class AddUserRequest extends FormRequest
                 "national_code" => ["required_if:user_type,legal", "string"],
                 "economic_code" => ["required_if:user_type,legal", "string"],
                 "registration_number" => ["required_if:user_type,legal", "string"],
+                "is_active" => ["boolean"],
 
             ];
         }
+       
         
+    }
+
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'نام الزامی است.',
+            'name.string' => 'نام باید رشته باشد.',
+            'name.min' => 'تعداد حروف  نام باید حداقل سه عدد باشد.',
+            'name.max' => 'تعداد حروف  نام باید حداکثر 25 عدد باشد.',
+            'category_id.required'=> 'دسته بندی الزامی است',
+            'category_id.exists'=> 'دسته بندی وجود ندارد',
+            
+            'phone.required' => ' شماره  الزامی است!.',
+            'phone.regex' => 'فرمت  شماره  اشتباه است.',
+            'phone.string' => '  شماره  باید رشته باشد.',
+            'phone.unique' => 'این شماره از قبل ثبت شده است.',
+            'user_type.required'=> 'نوع کاربر الزامی است',
+            'user_type.in'=> 'نوع کاربر  باید حقیقی یا حقوقی باشد',
+
+            'company_name.required_if'=> 'نام شرکت الزامی است',
+            'national_code.required_if'=> 'شمتاسه ملی  الزامی است',
+            'economic_code.required_if'=> ' کد اقتصادی  الزامی است',
+            'registration_number.required_if'=> ' شناسه ثبت الزامی است',
+
+           
+
+        ];
+    }
+
+    protected function failedValidation(Validator $validator)
+    {
+        throw new HttpResponseException(response()->json([
+            'success' => false,
+            'message' => ' خطا اعتبارسنجی!',
+            'statusCode' => 422,
+            'errors' => [$validator->errors()->first()],
+        
+            'data' => null
+        ], 422));
     }
 }

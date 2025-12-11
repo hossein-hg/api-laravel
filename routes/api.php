@@ -119,7 +119,7 @@ Route::middleware('auth:api')->group(function () {
         Route::post('users/store', [UserController::class, 'store'])
             // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
         ;
-        Route::post('users/update', [UserController::class, 'update'])
+        Route::put('users/update', [UserController::class, 'update'])
             // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
         ;
         Route::post('users/delete', [UserController::class, 'destroy'])
@@ -157,6 +157,10 @@ Route::middleware('auth:api')->group(function () {
             // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
         ;
         Route::post('upload-image', [GroupController::class, 'uploadImage']);
+
+        Route::post('product/store', [ProductsController::class, 'store'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
 
     });
     

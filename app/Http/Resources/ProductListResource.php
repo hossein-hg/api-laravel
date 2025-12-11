@@ -40,6 +40,7 @@ class ProductListResource extends JsonResource
             'images' => $this->whenLoaded('images', fn() => $this->images->pluck('path')),
             'categoryName' => $this->whenLoaded('group', fn() => trim($this->group->name)),
             'categoryPath' => $this->whenLoaded('group', fn() => trim($this->group->name)),
+            'category_id' => $this->whenLoaded('group', fn() => trim($this->group->id)),
             'stars' => $this->stars,
             'discount' => $this->activeOffer()['percent'],
             'tags' => $this->tags,

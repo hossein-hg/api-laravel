@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Http\Resources\OrderProductCollection;
 use App\Http\Requests\Admin\Order\UploadCheckRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use App\Services\OrderService;
 
 class OrderController extends Controller
 {
@@ -33,40 +34,30 @@ class OrderController extends Controller
     
 
     public function index(){
+
        
-        $query = Order::with('products','user')->where('user_id', auth()->user()->id);
-        $orders = $query->orderBy('id','desc')->paginate(2);
+        $orderService = new OrderService();
+        $orders = $orderService->getOrdersByStatus('index');
         return new OrderCollection($orders);
     }
 
     public function all()
     {
-        $user = auth()->user();
-        
-        $query = Order::with('products', 'user');
-        
-        $orders = $query->orderBy('id', 'desc')->where('status',1)->paginate(10);
-
+        $orderService = new OrderService();
+        $orders = $orderService->getOrdersByStatus(status:[1]);
         return new OrderCollection($orders);
     }
 
     public function financialAll()
     {
-       
-        $query = Order::with('products', 'user');
-
-        $orders = $query->orderBy('id', 'desc')->whereIn('status', [2,3,4])->paginate(10);
-
+        $orderService = new OrderService();
+        $orders = $orderService->getOrdersByStatus(status: [2, 3, 4]);
         return new OrderCollection($orders);
     }
 
     public function warehouseAll(){
-        
-
-        $query = Order::with('products', 'user');
-
-        $orders = $query->orderBy('id', 'desc')->whereIn('status', [6])->paginate(10);
-
+        $orderService = new OrderService();
+        $orders = $orderService->getOrdersByStatus(status: [6]);
         return new OrderCollection($orders);
     }
     public function addFromCart(Request $request){
@@ -148,8 +139,7 @@ class OrderController extends Controller
         $selected_address = $user->addresses->where('status',1)->first()->id ?? [];
         $checkes = $order->checkes;
 
-        
-        $pivot = OrderProduct::where('order_id', $order->id)->get();
+
         $result = OrderProduct::where('order_id', $order->id)->where('pay_type', 'LIKE', '%day_%')
             ->select('pay_type', DB::raw('COUNT(*) as total'), DB::raw('SUM(price) as total_price'))
             ->groupBy('pay_type')
@@ -1811,6 +1801,10 @@ class OrderController extends Controller
             );
         }
 
+        
+    }
+
+    public function allDetails(Order $order){
         
     }
 }

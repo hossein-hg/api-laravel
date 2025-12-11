@@ -14,6 +14,7 @@ class UserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+    
         return [
             "id"=> $this->id,
             "name"=> $this->name,
@@ -21,6 +22,7 @@ class UserResource extends JsonResource
             "telephone"=> $this->telephone,
             "gender"=> $this->gender,
             "categoryName"=> $this->category ? $this->category->name : "1",
+            "category_id"=> $this->category ? $this->category->id : 1,
             "avatar"=> $this->avatar,
             "user_type"=> $this->user_type,
             "company_name"=> $this->company_name,

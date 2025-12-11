@@ -6,6 +6,7 @@ use App\Http\Resources\UserCollection;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Http\Controllers\Controller;
+use Exception;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
@@ -69,7 +70,7 @@ class UserController extends Controller
 
         if ($request->filled('category')) {
         
-            $query->whereHas('group', function ($q) use ($request) {
+            $query->whereHas('category', function ($q) use ($request) {
                 $name =$request->category;
                 $q->where('name', 'LIKE', "%" . $name . "%");
             });
@@ -158,7 +159,7 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-       
+        
         return response()->json([
             'data'=> [
                 'user'=> new UserResource($user),

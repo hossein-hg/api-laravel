@@ -82,7 +82,7 @@ class AddressRequest extends FormRequest
             'success' => false,
             'message' => ' خطا اعتبارسنجی!',
             'statusCode' => 422,
-            'errors' => $validator->errors(),
+            'errors' => [$validator->errors()->first()],
             'data' => null
         ], 422));
     }

@@ -34,7 +34,8 @@ class User extends Authenticatable implements JWTSubject
         'national_code',
         'economic_code',
         'registration_number',   
-        'is_active'
+        'is_active',
+        'user_type'
     ];
     use HasRoles;
     /**

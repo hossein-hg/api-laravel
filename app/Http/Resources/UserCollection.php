@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Carbon\Carbon;
@@ -14,16 +15,18 @@ class UserCollection extends ResourceCollection
      */
     public function toArray(Request $request): array
     {
-        $all_users_count = $this->collection->count();
-        $all_inactive_users_count = $this->collection->where('is_active', 0)->count();
-        $all_regular_users_count = $this->collection->where('user_type','regular')->count();
-        $all_legal_users_count = $this->collection->where('user_type','legal')->count();
+        $users = User::all();
+        
+        $all_users_count = $users->count();
+        $all_inactive_users_count = $users->where('is_active', 0)->count();
+        $all_regular_users_count = $users->where('user_type','regular')->count();
+        $all_legal_users_count = $users->where('user_type','legal')->count();
 
-        $currentMonthUsers = $this->collection->whereBetween('created_at', [
+        $currentMonthUsers = $users->whereBetween('created_at', [
             Carbon::now()->startOfMonth(),
             Carbon::now()->endOfMonth()
         ])->count();
-        $lastMonthUsers = $this->collection->whereBetween('created_at', [
+        $lastMonthUsers = $users->whereBetween('created_at', [
             Carbon::now()->subMonth()->startOfMonth(),
             Carbon::now()->subMonth()->endOfMonth()
         ])->count();
@@ -32,14 +35,14 @@ class UserCollection extends ResourceCollection
             $percentageIncreaseAllUsers = min($percentageIncreaseAllUsers, 100);
         } else {
             $percentageIncreaseAllUsers = $currentMonthUsers > 0 ? 100 : 0;
-            $percentageIncreaseAllUsers = number_format($percentageIncreaseAllUsers, 2);
+            
         }
 
-        $currentMonthUsers = $this->collection->where('is_active', 0)->whereBetween('created_at', [
+        $currentMonthUsers = $users->where('is_active', 0)->whereBetween('created_at', [
             Carbon::now()->startOfMonth(),
             Carbon::now()->endOfMonth()
         ])->count();
-        $lastMonthUsers = $this->collection->where('is_active', 0)->whereBetween('created_at', [
+        $lastMonthUsers = $users->where('is_active', 0)->whereBetween('created_at', [
             Carbon::now()->subMonth()->startOfMonth(),
             Carbon::now()->subMonth()->endOfMonth()
         ])->count();
@@ -50,11 +53,11 @@ class UserCollection extends ResourceCollection
             $percentageIncreaseInActiveUsers = $currentMonthUsers > 0 ? 100 : 0;
         }
 
-        $currentMonthUsers = $this->collection->where('user_type', 'regular')->whereBetween('created_at', [
+        $currentMonthUsers = $users->where('user_type', 'regular')->whereBetween('created_at', [
             Carbon::now()->startOfMonth(),
             Carbon::now()->endOfMonth()
         ])->count();
-        $lastMonthUsers = $this->collection->where('user_type', 'regular')->whereBetween('created_at', [
+        $lastMonthUsers = $users->where('user_type', 'regular')->whereBetween('created_at', [
             Carbon::now()->subMonth()->startOfMonth(),
             Carbon::now()->subMonth()->endOfMonth()
         ])->count();
@@ -65,11 +68,11 @@ class UserCollection extends ResourceCollection
             $percentageIncreaseReqularUsers = $currentMonthUsers > 0 ? 100 : 0;
         }
 
-        $currentMonthUsers = $this->collection->where('user_type', 'legal')->whereBetween('created_at', [
+        $currentMonthUsers = $users->where('user_type', 'legal')->whereBetween('created_at', [
             Carbon::now()->startOfMonth(),
             Carbon::now()->endOfMonth()
         ])->count();
-        $lastMonthUsers = $this->collection->where('user_type', 'legal')->whereBetween('created_at', [
+        $lastMonthUsers = $users->where('user_type', 'legal')->whereBetween('created_at', [
             Carbon::now()->subMonth()->startOfMonth(),
             Carbon::now()->subMonth()->endOfMonth()
         ])->count();
