@@ -1,9 +1,12 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
+use App\Http\Requests\AddFeatureRequest;
 use App\Http\Requests\ProductRequest;
+use App\Http\Resources\CompanyResource;
 use App\Http\Resources\ProductListResource;
 use App\Http\Resources\ProductResource;
+use App\Models\Admin\CompanyStock;
 use App\Models\Admin\Image;
 use App\Models\Admin\Offer;
 use Illuminate\Support\Facades\Storage;
@@ -16,7 +19,8 @@ use Illuminate\Http\Request;
 
 class ProductsController extends Controller
 {
-    public function index(Request $request){
+    public function index(Request $request)
+    {
 
         // $svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
         //     <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5">
@@ -40,12 +44,12 @@ class ProductsController extends Controller
         // ]);
 
 
-        $query = Product::with('images','group','options','comments','colors','warranties','sizes','brands');
-     
+        $query = Product::with('images', 'group', 'options', 'comments', 'colors', 'warranties', 'sizes', 'brands');
 
-       
+
+
         if ($request->filled('search') && strlen($request->input('search')) >= 3) {
-            
+
             $search = $request->input('search');
             $query->where('name', 'like', "%{$search}%");
         }
@@ -63,7 +67,7 @@ class ProductsController extends Controller
                     });
             });
 
-           
+
         }
 
 
@@ -76,7 +80,7 @@ class ProductsController extends Controller
         }
 
         if ($request->filled('filterMaxPrice')) {
-            
+
             $maxPrice = (int) $request->input('filterMaxPrice');
             $query->whereRaw('price * ratio <= ?', [$maxPrice]);
         }
@@ -128,31 +132,34 @@ class ProductsController extends Controller
 
         return new ProductCollection($products);
 
-        
-        
+
+
     }
 
 
     public function show(Product $product)
     {
-        // dd($product);
         
+        // dd($product);
+     
         $data = [
-            'data'=> ['product'=>new ProductResource($product)],
+            'data' => ['product' => new ProductResource($product)],
             'statusCode' => 200,
             'message' => 'موفقیت آمیز',
             'success' => true,
             'errors' => null,
         ];
         return response()->json($data);
-     
+
     }
 
-    public function store(ProductRequest $request){
+    public function store(ProductRequest $request)
+    {
         $product = new Product();
-        
+
         $product->name = $request->name;
-        $product->group_id = $request->category_id;
+        $product->en_name = $request->en_name;
+        $product->group_id = $request->subCategory_id;
         $product->price = $request->price;
         $product->description = $request->description;
         $product->inventory = $request->inventory;
@@ -160,29 +167,202 @@ class ProductsController extends Controller
         $product->warehouseInventory = $request->warehouseInventory;
         $product->cover = $request->cover;
         $product->tags = $request->tags;
-        $product->shortDescription = $request->shortDescription;
-        $product->additionalInformation = $request->additionalInformation;
+        $product->type = $request->type;
+        $product->shortDescription = e($request->shortDescription);
+        $product->additionalInformation = e($request->additionalInformation);
+        $product->max_sell = $request->max_sell;
+        $product->stars = 5;
         $product->save();
-        if ($request->filled('images')){
+        if ($request->filled('images')) {
             foreach ($request->images as $imageRequest) {
-                $image = new Image();
-                $image->product_id = $product->id;
-                $image->path = $imageRequest; 
-                $image->save();
+
+                $count = Image::where('product_id', $request->id)->count();
+           
+                   
+                    $image = new Image();
+                    $image->product_id = $product->id;
+                    $image->path = $imageRequest;
+                    $image->save();
+                   
+
             }
         }
 
-        if ($request->filled('discount')){
+        if ($request->filled('discount')) {
             $offer = new Offer();
             $offer->percent = $request->discount;
             $offer->product_id = $product->id;
-            $offer->start_time = $request->discount_start_time; 
-            $offer->end_time = $request->discount_end_time; 
-            
+            $offer->start_time = $request->discount_start_time;
+            $offer->end_time = $request->discount_end_time;
             $offer->save();
         }
 
+        return response()->json([
+            'data' => [
+                'type' => $product->type,
+                'id' => $product->id,
+                'en_name' => $product->en_name,
+            ],
+            'statusCode' => 200,
+            'message' => 'موفقیت آمیز',
+            'success' => true,
+            'errors' => null,
+        ]);
+
     }
+
+    public function update(ProductRequest $request)
+    {
+
+        $product = Product::findOrFail($request->id);
+        $product->name = $request->name;
+        $product->en_name = $request->en_name;
+        $product->group_id = $request->subCategory_id;
+        $product->price = $request->price;
+        $product->description = $request->description;
+        $product->inventory = $request->inventory;
+        $product->ratio = $request->ratio;
+        $product->warehouseInventory = $request->warehouseInventory;
+        $product->cover = $request->cover;
+        $product->tags = $request->tags;
+        $product->type = $request->type;
+        $product->shortDescription = e($request->shortDescription);
+        $product->additionalInformation = e($request->additionalInformation);
+        $product->max_sell = $request->max_sell;
+        $product->save();
+        if ($request->filled('images')) {
+            //    dd(count($request->images));
+            foreach ($request->images as $imageRequest) {
+                
+                $quantity = Image::where('product_id', $request->id)->count();
+                $image = Image::where('product_id', $request->id)->where('path', $imageRequest['url'])->first();
+                
+                if ($image) {
+
+                    $image->product_id = $request->id;
+                    $image->path = $imageRequest['url'];
+                    if ($imageRequest['delete']){
+                     
+                        $image->path = null;
+                    }
+                    $image->save();
+
+                }
+
+                if ($image) {
+                    if (!$image->path) {
+                        $image->delete();
+                    }
+
+                }
+              
+
+                if (!$image and $quantity < 4) {
+                    $image = new Image();
+                    $image->product_id = $request->id;
+                    $image->path = $imageRequest['url'];
+                    $image->save();
+                }
+
+
+            }
+        }
+
+        if ($request->filled('discount')) {
+            $offer = Offer::where('product_id', $request->id)->first();
+            if (!$offer) {
+                $offer = new Offer();
+            }
+            $offer->percent = $request->discount;
+            $offer->product_id = $product->id;
+            $offer->start_time = $request->discount_start_time;
+            $offer->end_time = $request->discount_end_time;
+            $offer->save();
+        }
+
+        return response()->json([
+            'data' => [
+                'type' => $product->type,
+                'id' => $product->id,
+                'en_name' => $product->en_name,
+            ],
+            'statusCode' => 200,
+            'message' => 'موفقیت آمیز',
+            'success' => true,
+            'errors' => null,
+        ]);
+
+    }
+
+    public function delete(Request $request)
+    {
+        $product = Product::findOrFail($request->id);
+        $product->delete();
+        return response()->json([
+            'data' => null,
+            'statusCode' => 200,
+            'message' => 'موفقیت آمیز',
+            'success' => true,
+            'errors' => null,
+        ]);
+
+    }
+
+
+    public function addFeatures(AddFeatureRequest $request)
+    {
+        Product::findOrFail($request->id);
+        $company = CompanyStock::where('product_id', $request->id)->delete();
+        foreach ($request->rows as $row) {
+            $company = new CompanyStock();
+            $company->product_id = $request->id;
+            if ($row['color']) {
+                $company->color_name = $row['color']['name'];
+                $company->color_code = $row['color']['code'];
+            }
+            $company->size = $row['size'];
+            if ($row['color']) {
+                $company->brand = $row['brand']['name'];
+                $company->brand_id = $row['brand']['id'];
+            }
+            $company->warranty = $row['warranty'];
+            $company->count = $row['count'];
+            $company->accCode = $row['accCode'];
+            $company->price = $row['price'];
+            $company->save();
+        }
+
+        return response()->json([
+            'data' => null,
+            'statusCode' => 200,
+            'message' => 'موفقیت آمیز',
+            'success' => true,
+            'errors' => null,
+        ]);
+    }
+
+    public function features($id)
+    {
+        
+        $product = Product::findOrFail($id);
+        $group = $product->group;
+        $group_id = $group ? $group->id : 0;
+        $brands = $group->brands->pluck('id');
+      
+        // dd($group);
+        $companies = CompanyStock::where('product_id', $product->id)->whereIn('brand_id',$brands)->get();
+        return response()->json([
+            'data' => [
+                'id' => $product->id,
+                'rows' => CompanyResource::collection($companies),
+            ],
+            'statusCode' => 200,
+            'message' => 'موفقیت آمیز',
+            'success' => true,
+            'errors' => null,
+        ]);
+    }
+
 
 
 

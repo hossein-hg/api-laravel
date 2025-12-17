@@ -23,10 +23,12 @@ class StoreGroupRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "name"=> ["required","string","max:500"],
-            
-            "parent"=> ['nullable', 'exists:groups,id'],
-            'image' => ['required', 'string'],
+            "name"=> ["required","string","max:50","min:3"],
+            'brands' => ['nullable', 'array'],
+            'brands.*.fa_name' => ['nullable', 'string', 'max:50'],
+            'brands.*.en_name' => ['nullable', 'string', 'max:50'],
+            "parent_id"=> ['nullable', 'exists:groups,id'],
+            'image' => ['required','string'],
 
         ];
     }
@@ -37,8 +39,22 @@ class StoreGroupRequest extends FormRequest
             'success' => false,
             'message' => ' خطا اعتبارسنجی!',
             'statusCode' => 422,
-            'errors' => $validator->errors(),
+            'errors' => [$validator->errors()->first()],
             'data' => null
         ], 422));
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'نام الزامی است.',
+            'name.string' => 'نام باید رشته باشد.',
+            'name.min' => 'تعداد حروف  نام باید حداقل سه عدد باشد.',
+            'name.max' => 'تعداد حروف  نام باید حداکثر 25 عدد باشد.',
+            'image.required'=> 'تصویر الزامی است',
+            'image.string'=> 'تصویر باید رشته باشد',
+            
+
+        ];
     }
 }

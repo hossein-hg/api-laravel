@@ -16,6 +16,7 @@ use App\Models\Admin\Color;
 use App\Models\Admin\Brand;
 use App\Models\Admin\FilterOption;
 use DB;
+use Illuminate\Database\Eloquent\SoftDeletes;
 class Product extends Model
 {
     // protected function casts(): array
@@ -39,6 +40,7 @@ class Product extends Model
         'stars',
         'url',
         'category_id',
+        'group_id',
         'price',
         'oldPrice',
         'cover',
@@ -51,7 +53,10 @@ class Product extends Model
         'satisfaction',
         'additionalInformation',
         'group_id',
+        'type',
     ];
+
+    use SoftDeletes;
 
     public function category(){
         return $this->belongsTo(Category::class,'category_id','id');
@@ -76,7 +81,9 @@ class Product extends Model
     }
 
  
-
+    public function companyStocks(){
+        return $this->hasMany(CompanyStock::class,'product_id');
+    }
    
 
     public function filtersWithSelectedOptions()
@@ -117,29 +124,33 @@ class Product extends Model
 
     public function activeOffer(){
         $offer = $this->offer;
-        
+       
         if ($offer) {
             $startTime = Carbon::parse($offer->start_time);  
             $endTime = Carbon::parse($offer->end_time);  
             $now = Carbon::now();
-            
+           
            if ($startTime < $now && $now < $endTime && $this->inventory == 1) {
+               
                 $countDown = strtotime($offer->end_time) * 1000;
                     return [
                         'percent'=>$offer->percent,
-                        'countDown'=> $countDown
+                        'countDown'=> $countDown,
+                        'discount_start_time'=> $offer->start_time,
                     ]; 
                 
                 }
                 return [
                         'percent'=>0,
-                        'countDown'=> 0
+                        'countDown'=> 0,
+                         'discount_start_time' => null,
                         ] ;            
             }
             return [
                         'percent'=>0,
-                        'countDown'=> 0
-                        ] ;
+                        'countDown'=> 0,
+                        'discount_start_time' => null,
+                        ];
     }
 
     public function warranties()

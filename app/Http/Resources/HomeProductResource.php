@@ -76,6 +76,7 @@ class HomeProductResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => trim($this->name),
+            'en_name' => trim($this->en_name),
             'price' => $prices['cash'],
             'oldPrice' => $oldPrices['cash'],
             'cover' => $this->cover,

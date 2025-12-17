@@ -22,6 +22,12 @@ class Order extends Model
         return $this->hasMany(Check::class);
      }
 
+
+    public function comments(){
+        
+        return $this->hasMany(OrderComment::class);
+    }
+
     protected $fillable = [
         'user_id',
         'count',
@@ -31,3 +37,7 @@ class Order extends Model
         'description'
     ];
 }
+
+
+
+

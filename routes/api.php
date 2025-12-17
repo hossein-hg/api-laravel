@@ -31,7 +31,7 @@ Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
 
 // Route::resource('product',ProductsController::class);
 Route::get('product', [ProductsController::class, 'index'])->middleware(JWTOptional::class);
-Route::get('product/{product:name}',[ProductsController::class,'show'])->middleware(JWTOptional::class);
+Route::get('product/{product:en_name}',[ProductsController::class,'show'])->middleware(JWTOptional::class);
 
  
 Route::get('home', [HomeController::class, 'index']);
@@ -56,8 +56,10 @@ Route::middleware('auth:api')->group(function () {
         // ->middleware(CheckRole::class.':expert-financial')
     ;
 
+    
+
     Route::get('order/details/{order}', [OrderController::class, 'show']);
-    Route::get('order/sale-details/{order}', [OrderController::class, 'saleShow'])
+    
     // ->middleware(CheckRole::class . ':expert-sale')
     ;
     Route::get('order/financial-details/{order}', [OrderController::class, 'financialShow'])
@@ -86,7 +88,12 @@ Route::middleware('auth:api')->group(function () {
     Route::get('order/final-approval/{order}', [OrderController::class, 'FinalApproval'])
     // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
     ;
+    
     Route::get('order/initial-approval/{order}', [OrderController::class, 'initialApproval'])
+        // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+    ;
+
+    Route::get('order/comments/{order}', [OrderController::class, 'comments'])
         // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
     ;
 
@@ -111,6 +118,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('user/address/delete', [AddressController::class, 'delete'])
         // ->middleware(CheckRole::class.':expert-financial')
     ;
+
+    Route::get('order/sale-details/{order}', [OrderController::class, 'saleShow']);
 
     Route::prefix('/admin')->group(function () {
         Route::get('users', [UserController::class, 'index'])
@@ -144,10 +153,13 @@ Route::middleware('auth:api')->group(function () {
         Route::get('product-categories', [GroupController::class, 'index'])
             // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
         ;
+        Route::get('product-categories/all', [GroupController::class, 'all'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
         Route::post('product-categories/store', [GroupController::class, 'store'])
             // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
         ;
-        Route::post('product-categories/update', [GroupController::class, 'update'])
+        Route::put('product-categories/update', [GroupController::class, 'update'])
             // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
         ;
         Route::post('product-categories/delete', [GroupController::class, 'destroy'])
@@ -160,6 +172,30 @@ Route::middleware('auth:api')->group(function () {
 
         Route::post('product/store', [ProductsController::class, 'store'])
             // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+
+        Route::put('product/update', [ProductsController::class, 'update'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+
+        Route::post('product/delete', [ProductsController::class, 'delete'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+
+        Route::post('product/add-features', [ProductsController::class, 'addFeatures'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+
+        Route::get('product/features/{id}', [ProductsController::class, 'features'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+
+        Route::get('order/all-details/{order}', [OrderController::class, 'allDetails'])
+            // ->middleware(CheckRole::class . ':expert-financial,expert-sale')
+        ;
+
+        Route::get('orders/admin-all', [OrderController::class, 'adminAll'])->name('orders-admin-all')
+            // ->middleware(CheckRole::class.':expert-financial')
         ;
 
     });
@@ -210,32 +246,6 @@ Route::get('test',function(){
     
     
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

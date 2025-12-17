@@ -14,11 +14,15 @@ class GroupCollection extends ResourceCollection
      */
     public function toArray(Request $request): array
     {
-
+        
         return [
             'data' => [
                 'results' => GroupResource::collection($this->collection),
-                
+                'hasPrevPage' => !$this->onFirstPage(),
+                'hasNextPage' => $this->hasMorePages(),
+                'page' => $this->currentPage(),
+                'total_page' => $this->lastPage(),
+                'total_categories' => $this->total(),
             ],
             'statusCode' => 200,
             'message' => 'موفقیت آمیز',

@@ -1,6 +1,7 @@
 <?php
 namespace App\Services;
 use App\Models\Admin\Order;
+use Illuminate\Support\Facades\DB;
 
 class OrderService{
     public function getOrdersByStatus($method = null, $status = null){

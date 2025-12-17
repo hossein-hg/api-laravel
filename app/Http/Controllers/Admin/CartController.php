@@ -1,12 +1,14 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
-use App\Models\Admin\CartProduct;
-use App\Models\Admin\Product;
-use App\Http\Controllers\Controller;
 use DB;
-use Illuminate\Http\Request;
 use App\Models\Admin\Cart;
+use Illuminate\Http\Request;
+use App\Models\Admin\Product;
+use App\Models\Admin\CartProduct;
+use App\Models\Admin\CompanyStock;
+use App\Http\Controllers\Controller;
+
 class CartController extends Controller
 {
     public function index(){
@@ -35,6 +37,7 @@ class CartController extends Controller
             return [
                 "id" => $product->id,
                 "faName" => $product->name,
+                "en_name" => $product->en_name,
                 "url" => $product->url,
                 "price" => $product_price,
                 "cover" => $product->cover,
@@ -59,6 +62,7 @@ class CartController extends Controller
             return [
                 'id' => $i['id'],
                 'faName' => $i['faName'],
+                'en_name' => $i['en_name'],
                 'url' => $i['url'],
                 'price' => (string) number_format($i['price']),
                 'cover' => $i['cover'],
@@ -136,189 +140,162 @@ class CartController extends Controller
                     'errors' => null
                 ]); 
             }
-
-        
-
-        
-            
-                $product = Product::findOrFail($request['id']);
-                
-                $is_exist = false;
-                $count = $request['count'];
-
-                $all_request[] = [
-                    'id'=> $request['id'],
-                    'count'=> $request['count'],
-                ]; 
-
                 $color = $request['color'] ?? null;
-                $productColors = $product->colors;
-                $selectedColor = null;
-                if ($color) {
-                        if ($productColors){
-                            $selectedColor = $productColors->where('color', $color)->first();
-                        }
-
-                }
-               
                 $size = $request['size'] ?? null;
-                $productSizes = $product->sizes;
-                $selectedSize = null;
-                if ($size) {
-                    
-                    if ($productSizes) {
-                    $selectedSize = $productSizes->where('size', $size)->first();
-                        
-                    }
-                }
                 $brand = $request['brand'] ?? null;
-                $productBrands = $product->brands;
-                $selectedBrand = null;
-                if ($brand) {
-                    
-                  
-                    if ($productBrands) {
-                        $selectedBrand = $productBrands->where('name', $brand)->first();
-                    }
+                $count = $request['count'];
+        $product = Product::findOrFail($request['id']);
+        $existingProductInCompany = CompanyStock::where('product_id', $product->id)
+            ->where(function ($query) use ($color) {
+                if (!is_null($color)) {
+                    $query->where('color_code', $color);
                 }
-           
+            })
+            ->where(function ($query) use ($size) {
+                if (!is_null($size)) {
+
+                    $query->where('size', $size);
+                }
+            })
+            ->where(function ($query) use ($brand) {
+                if (!is_null($brand)) {
+                    $query->where('brand', $brand);
+                }
+            })
+            ->first();
+        $user_id = auth()->user()->id;
+        $cart = Cart::firstOrCreate(
+            ['user_id' => $user_id],
+            ['count' => 0, 'total_price' => 0]
+        );
+        $existingProductInPivot = CartProduct::where('product_id', $product->id)->where('cart_id', $cart->id)
+            ->where(function ($query) use ($color) {
+                if (!is_null($color)) {
+                    $query->where('color', $color);
+                } 
+            })
+            ->where(function ($query) use ($size) {
+                if (!is_null($size)) {
+
+                    $query->where('size', $size);
+                } 
+            })
+            ->where(function ($query) use ($brand) {
+                if (!is_null($brand)) {
+                    $query->where('brand', $brand);
+                } 
+            })
+            ->first();
             
             $inventory = true;
+            $is_exist = false;
+            $calc_price = price_calculate($product, $color, $brand, $size, $request['selectedPrice'], $count);
+      
+            if ($existingProductInCompany){
+         
+                if ($existingProductInCompany->count < ($count * $product->ratio)) {
+                    $inventory = false;
+                    if ($existingProductInPivot) {
+                        $count = $existingProductInPivot->quantity;
+                    }
+                }
                
-                
-            $user_id = auth()->user()->id;
-            $cart = Cart::firstOrCreate(
-                ['user_id' => $user_id],
-                ['count' => 0, 'total_price' => 0]
-            );
-            
-            $getColor = $selectedColor ? $selectedColor->color : null;
-            $getSize = $selectedSize ? $selectedSize->size : null;
-            $getBrand = $selectedBrand ? $selectedBrand->name : null;
+                if($inventory){
+                    if ($existingProductInPivot) {
+                        $is_exist = true;
 
-            // dd($getColor, $getSize, $getBrand);
-            
-            $existingProductInPivot = CartProduct::where('product_id', $product->id)->where('cart_id',$cart->id)
-                ->where(function ($query) use ($getColor) {
-                    if (is_null($getColor)) {
-                        $query->whereNull('color');
-                    } else {
-                        $query->where('color', $getColor);
-                    }
-                })
-                ->where(function ($query) use ($getSize) {
-                    if (is_null($getSize)) {
+                        $existingProductInPivot->quantity = $count;
+
+                        $existingProductInPivot->price = $calc_price['number_total_product_price'];
                         
-                        $query->whereNull('size');
+                        $existingProductInPivot->color = $existingProductInCompany->color_code;
+                        $existingProductInPivot->size = $existingProductInCompany->size;
+                        $existingProductInPivot->brand = $existingProductInCompany->brand;
+                        $existingProductInPivot->product_price = $calc_price['number_one_product'];
+                        $existingProductInPivot->pay_type = $request['selectedPrice'];
+                        $existingProductInPivot->save();
                     } else {
-                        $query->where('size', $getSize);
-                    }
-                })
-                ->where(function ($query) use ($getBrand) {
-                    if (is_null($getBrand)) {
-                        $query->whereNull('brand');
-                    } else {
-                        $query->where('brand', $getBrand);
-                    }
-                })
-                ->first();
-                
-           
 
-            // dd($existingProduct);
+                        $new_cart_order_record = new CartProduct();
+                        $new_cart_order_record->cart_id = $cart->id;
+                        $new_cart_order_record->quantity = $count;
+                        $new_cart_order_record->ratio = $product->ratio;
+                        $new_cart_order_record->price = $calc_price['number_total_product_price'];
+                        $new_cart_order_record->color = $existingProductInCompany->color_code;
+                        $new_cart_order_record->size = $existingProductInCompany->size;
+                        $new_cart_order_record->brand = $existingProductInCompany->brand;
+                        $new_cart_order_record->product_price = $calc_price['number_one_product'];
+                        $new_cart_order_record->pay_type = $request['selectedPrice'];
+                        $new_cart_order_record->product_id = $product->id;
+                        $new_cart_order_record->save();
+                    
+                    }
+                }
+                else{
+                    if ($existingProductInPivot) {
+                        $existingProductInPivot->inventory = 0;
+                        $existingProductInPivot->pay_type = $request['selectedPrice'];
+                        $existingProductInPivot->save();
+                        $existingProductInPivot->refresh();
+                     
+                        $is_exist = true;
+                        
+
+                    }
+                }
+
+
+      
+            }
+            else{
             
                 if ($product->warehouseInventory < ($count * $product->ratio)) {
                     $inventory = false;
                     if ($existingProductInPivot) {
-                            $count = $existingProductInPivot->quantity;
-                    }
-                    else{
-                        $count = 1;
+                        $count = $existingProductInPivot->quantity;
                     }
                 }
-            
-            $new_price = price($product, $selectedColor , $selectedBrand , $selectedSize, $request['selectedPrice'], $count);
-            $selectedColorValue = $selectedColor ? $selectedColor->color : null;
-            $selectedSizeValue = $selectedSize ? $selectedSize->size : null;
-            $selectedBrandValue = $selectedBrand ? $selectedBrand->name : null;
        
-            if ($inventory){
-             
-                
-                if ($existingProductInPivot) {
 
-                
-                    if ($selectedColorValue == $existingProductInPivot->color and $selectedBrandValue == $existingProductInPivot->brand and $selectedSizeValue == $existingProductInPivot->size and  $cart->id == $existingProductInPivot->cart_id) {
-                    
+                if ($inventory) {
+                    if ($existingProductInPivot) {
                         $is_exist = true;
+                        $existingProductInPivot->quantity = $count;
+                        $existingProductInPivot->price = $calc_price['number_total_product_price'];
+                        $existingProductInPivot->product_price = $calc_price['number_one_product'];
+                        $existingProductInPivot->pay_type = $request['selectedPrice'];
+                        $existingProductInPivot->save();
+                    } else {
+
+                        $new_cart_order_record = new CartProduct();
+                        $new_cart_order_record->cart_id = $cart->id;
+                        $new_cart_order_record->quantity = $count;
+                        $new_cart_order_record->ratio = $product->ratio;
+                        $new_cart_order_record->price = $calc_price['number_total_product_price'];
+                        
+                        $new_cart_order_record->product_price = $calc_price['number_one_product'];
+                        $new_cart_order_record->pay_type = $request['selectedPrice'];
+                        $new_cart_order_record->product_id = $product->id;
+                        $new_cart_order_record->save();
+
                     }
-                    $existingProductInPivot->quantity = $count;
-                    
-                    $existingProductInPivot->price = $new_price['number_total_product_price'];
-                    $existingProductInPivot->color = $selectedColor ? $selectedColor->color : null;
-                    $existingProductInPivot->size = $selectedSize ? $selectedSize->size : null;
-                    $existingProductInPivot->brand = $selectedBrand ? $selectedBrand->name : null;
-                    $existingProductInPivot->product_price = $new_price['number_one_product'];
-                    $existingProductInPivot->pay_type = $request['selectedPrice'];
-                    $existingProductInPivot->save();
-                    $existingProductInPivot->refresh();
-                    
                 } else {
-                
-                    $new_cart_order_record = new CartProduct();
-                    $new_cart_order_record->cart_id = $cart->id;
-                    $new_cart_order_record->quantity = $count;
-                    $new_cart_order_record->ratio = $product->ratio;
-                    $new_cart_order_record->price = $new_price['number_total_product_price'];
-                    $new_cart_order_record->color = $selectedColor ? $selectedColor->color : null;
-                    $new_cart_order_record->size = $selectedSize ? $selectedSize->size : null;
-                    $new_cart_order_record->brand = $selectedBrand ? $selectedBrand->name : null;
-                    $new_cart_order_record->product_price = $new_price['number_one_product'];
-                    $new_cart_order_record->pay_type = $request['selectedPrice'];
-                    $new_cart_order_record->product_id = $product->id;
-                    $new_cart_order_record->save();
-                    $new_cart_order_record->refresh();
-                }
+                    if ($existingProductInPivot) {
+                        $existingProductInPivot->inventory = 0;
+                        $existingProductInPivot->pay_type = $request['selectedPrice'];
+                        $existingProductInPivot->save();
+                        $existingProductInPivot->refresh();
 
-            }
-            else{
-                if ($existingProductInPivot) {
-                    $existingProductInPivot->inventory = 0;
-                    $existingProductInPivot->pay_type = $request['selectedPrice'];
-                    $existingProductInPivot->save();
-                    $existingProductInPivot->refresh();
-                    if ($selectedColorValue == $existingProductInPivot->color and $selectedBrandValue == $existingProductInPivot->brand and $selectedSizeValue == $existingProductInPivot->size and $cart->id == $existingProductInPivot->cart_id) {
                         $is_exist = true;
+
+
                     }
-                    
                 }
-                else{
-                    // $new_cart_order_record = new CartProduct();
-                    // $new_cart_order_record->quantity = 1;
-                    // $new_cart_order_record->cart_id = $cart->id;
-                    // $new_cart_order_record->product_id = $product->id;
-                    // $new_cart_order_record->ratio = $product->ratio;
-                    // $new_cart_order_record->price = $new_price['number_total_product_price'];
-                    // $new_cart_order_record->color = $selectedColor ? $selectedColor->color : null;
-                    // $new_cart_order_record->size = $selectedSize ? $selectedSize->size : null;
-                    // $new_cart_order_record->brand = $selectedBrand ? $selectedBrand->name : null;
-                    // $new_cart_order_record->product_price = $new_price['number_one_product'];
-                    // $new_cart_order_record->pay_type = $request['selectedPrice'];
-                    // $new_cart_order_record->inventory = 0;
-                    // $new_cart_order_record->save();
-                    // $new_cart_order_record->refresh();
-                    
-                }     
+
+                
             }
-
-
-        
-        $reqMap = collect($all_request)->keyBy('id');
-        
-        // آماده سازی خروجی محصولات
-        
-
-        // محاسبه count و total_price کل سبد
+           
+            
         $cartData = $cart->products()->get()->reduce(function ($carry, $item) {
             $carry['count'] += $item->pivot->quantity;
             $carry['total_price'] += $item->pivot->price;
@@ -407,9 +384,30 @@ class CartController extends Controller
         $product = Product::find($request->id);
 
         // $cart->products()->detach($product->id);
-        $cart_product_item = CartProduct::where('cart_id',$cart->id)->where('product_id',$product->id)->where('brand', $request->brand)->where('color', $request->color)->where('size', $request->size)->first();
-        if ($cart_product_item){
-            $cart_product_item->delete();
+        
+        $color = $request->color;
+        $size = $request->size;
+        $brand = $request->brand;
+        $existingProductInPivot = CartProduct::where('product_id', $product->id)->where('cart_id', $cart->id)
+            ->where(function ($query) use ($color) {
+                if (!is_null($color)) {
+                    $query->where('color', $color);
+                }
+            })
+            ->where(function ($query) use ($size) {
+                if (!is_null($size)) {
+
+                    $query->where('size', $size);
+                }
+            })
+            ->where(function ($query) use ($brand) {
+                if (!is_null($brand)) {
+                    $query->where('brand', $brand);
+                }
+            })
+            ->first();
+        if ($existingProductInPivot){
+            $existingProductInPivot->delete();
         }
         
         $cart->load('products');
@@ -475,6 +473,7 @@ class CartController extends Controller
             return [
                 "id" => $product->id,
                 "faName" => $product->name,
+                "en_name" => $product->en_name,
                 "url" => $product->url,
                 "price" => (int) $price,
                 "cover" => $product->cover,

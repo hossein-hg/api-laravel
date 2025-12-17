@@ -15,8 +15,14 @@ class GroupResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $subCategories = Group::where("parent_id",$this->id)->get();
-      
+       
+        $categories = Group::whereNull("parent_id")->except($this)->get();
+        foreach ($categories as $category) {
+            $oneCat[] = [
+                "id"=> $category->id,
+                "name"=> $category->name,
+            ];
+        }
         return [
                 "id"=>  $this->id,
                 "name"=>  $this->name,
@@ -28,11 +34,17 @@ class GroupResource extends JsonResource
                 "description"=>  $this->description,
                 "keyword"=>  $this->keyword,
                 "turn"=>  $this->turn,
-                "flag"=>  $this->flag,
+                "flag"=>  $this->flag, 
                 "color"=>  $this->color,
                 "created_at"=>  $this->created_at,
                 "updated_at"=>  $this->updated_at,
-                "categories"=> $subCategories,
+                "rest_categories"=> $oneCat ?? null,
+                "categories" => GroupResource::collection($this->whenLoaded('children')),
+            'brands' => $this->when(
+                !is_null($this->parent_id), 
+                BrandResource::collection($this->brands)
+            ),
+
         ];
     }
 }

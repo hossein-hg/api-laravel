@@ -29,14 +29,14 @@ class AddUserRequest extends FormRequest
             return [
                 "name"=> ["required","string",'min:3','max:25'],
                 "phone"=> ["required","string","regex:/^09[0-9]{9}$/", Rule::unique('users', 'phone')],
-                "telephone"=> ["string","regex:/^0\d{2,3}-?\d{7}$/",'required_if:user_type,legal'],
+                "telephone"=> ["string","regex:/^0\d{2,3}-?\d{7}$/",'required_if:user_type,legal','nullable'],
                 "gender"=> ["required","in:0,1,2"],
                 "category_id"=> ["required","exists:user_categories,id"],
                 "user_type"=> ["required","string", "in:regular,legal"],
-                "company_name"=> ["required_if:user_type,legal","string"],
-                "national_code"=> ["required_if:user_type,legal","string"],
-                "economic_code"=> ["required_if:user_type,legal","string"],
-                "registration_number"=> ["required_if:user_type,legal","string"],
+                "company_name"=> ["required_if:user_type,legal","string",'nullable'],
+                "national_code"=> ["required_if:user_type,legal","string",'nullable'],
+                "economic_code"=> ["required_if:user_type,legal","string",'nullable'],
+                "registration_number"=> ["required_if:user_type,legal","string",'nullable'],
                 "is_active"=> ["boolean"],
                 
             ];
@@ -46,14 +46,14 @@ class AddUserRequest extends FormRequest
             return [
                 "name" => ["required", "string", 'min:3', 'max:25'],
                 "phone" => ["required", "string", "regex:/^09[0-9]{9}$/", Rule::unique('users', 'phone')->ignore($this->id, 'id')],
-                "telephone" => ["string", "regex:/^0\d{2,3}-?\d{7}$/",'required_if:user_type,legal'],
+                "telephone" => ['nullable',"string", "regex:/^0\d{2,3}-?\d{7}$/",'required_if:user_type,legal'],
                 "gender" => ["required", "in:0,1,2"],
                 "category_id" => ["required", "exists:user_categories,id"],
                 "user_type" => ["required", "string", "in:regular,legal"],
-                "company_name" => ["required_if:user_type,legal", "string"],
-                "national_code" => ["required_if:user_type,legal", "string"],
-                "economic_code" => ["required_if:user_type,legal", "string"],
-                "registration_number" => ["required_if:user_type,legal", "string"],
+                "company_name" => ["required_if:user_type,legal", "string",'nullable'],
+                "national_code" => ["required_if:user_type,legal", "string",'nullable'],
+                "economic_code" => ["required_if:user_type,legal", "string",'nullable'],
+                "registration_number" => ["required_if:user_type,legal", "string",'nullable'],
                 "is_active" => ["boolean"],
 
             ];
