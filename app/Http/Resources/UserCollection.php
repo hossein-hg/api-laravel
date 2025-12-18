@@ -83,12 +83,14 @@ class UserCollection extends ResourceCollection
             $percentageIncreaseLegalUsers = $currentMonthUsers > 0 ? 100 : 0;
         }
 
+       
         return [
             'data' => [
                 'results' => UserResource::collection($this->collection),
                 'list'=> [
                     [
                         'title'=> 'تعداد کل کاربران',
+                        'subtitle'=> 'درصد افزایش نسبت به ماه قبل',
                         'count' => $all_users_count,
                         'percentageIncrease' => $percentageIncreaseAllUsers,
                         'svg'=> ' <svg
@@ -110,6 +112,7 @@ class UserCollection extends ResourceCollection
                     [
                         'title' => 'کاربران غیرفعال ',
                         'count' => $all_inactive_users_count,
+                        'subtitle' => ' نسبت کاربران غیرفعال نسبت به کل',
                         'percentageIncrease' => $percentageIncreaseInActiveUsers,
                         'svg'=> '  <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -128,6 +131,7 @@ class UserCollection extends ResourceCollection
                     ],
                     [
                         'title' => 'کاربران حقیقی',
+                        'subtitle' => ' نسبت کاربران حقیقی نسبت به کل',
                         'count' => $all_regular_users_count,
                         'percentageIncrease' => $percentageIncreaseReqularUsers,
                         'svg'=> '<svg
@@ -147,6 +151,7 @@ class UserCollection extends ResourceCollection
                     ],
                     [
                         'title' => 'کاربران حقوقی',
+                        'subtitle' => ' نسبت کاربران حقیقی نسبت به کل',
                         'count' => $all_legal_users_count,
                         'percentageIncrease' => $percentageIncreaseLegalUsers,
                         'svg'=> '<svg

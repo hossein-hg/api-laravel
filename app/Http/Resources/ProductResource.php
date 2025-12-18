@@ -51,6 +51,7 @@ class ProductResource extends JsonResource
 
 
         $companyStockFirst = CompanyStock::where('product_id', $this->id)->first();
+
         // dd($companyStockFirst);
         $existingProductInCompany = CompanyStock::where('product_id', $this->id)
             ->where(function ($query) use ($request_color) {
@@ -70,43 +71,48 @@ class ProductResource extends JsonResource
                 }
             })
             ->first();
-        if ($existingProductInCompany) {
-            $color_name = $existingProductInCompany ? $existingProductInCompany->color_code : null;
-            $brand_name = $existingProductInCompany ? $existingProductInCompany->brand : null;
-            $size_name = $existingProductInCompany ? $existingProductInCompany->size : null;
-        } elseif ($companyStockFirst) {
-            $color_name = $companyStockFirst ? $companyStockFirst->color_code : null;
-            $brand_name = $companyStockFirst ? $companyStockFirst->brand : null;
-            $size_name = $companyStockFirst ? $companyStockFirst->size : null;
-        }
+            if ($existingProductInCompany) {
+                $color_name =  $existingProductInCompany->color_code;
+                $brand_name = $existingProductInCompany->brand;
+                $size_name =  $existingProductInCompany->size;
+            }
+            else{
+                $color_name = $companyStockFirst ? $companyStockFirst->color_code : null;
+                $brand_name = $companyStockFirst ? $companyStockFirst->brand : null;
+                $size_name = $companyStockFirst ? $companyStockFirst->size : null;
+            }
+            
         
-        $brands = $request_brand ? $query->distinct()->pluck('brand')->values()->toArray() : $all_company->pluck('brand')->unique()->toArray();
+        
+        $brands = 
+        // $request_brand 
+        // ?
+        //  $query->distinct()->pluck('brand')->values()->toArray()
+        //  :
+          $all_company->pluck('brand')->unique()->toArray();
         // $colorsExists = CompanyStock::where('brand', $request_brand)->get();
-        
-        $brandObj = CompanyStock::where('brand',$request_brand)->value('brand');
-        
-        
+        if ($request_brand){
+                $brandObj = CompanyStock::where('brand',$request_brand)->value('brand');
+                // dd($brandObj);
+        }
+        else{
+                $brandObj = CompanyStock::where('brand', $brand_name)->value('brand');
+        }
+       
         $colors = array_filter($query->distinct()->where('brand',$brandObj)->pluck('color_code')->values()->toArray());
         $sizes = array_filter($query->distinct()->where('brand',$brandObj)->pluck('size')->values()->toArray());
         $warranties = array_filter($query->distinct()->where('brand', $brandObj)->pluck('warranty')->values()->toArray());
        
-        
-
-
             $count_company = $existingProductInCompany ? $existingProductInCompany->count() : 0;
             
             if ($this->type == 1 and $count_company == 0) {
                 $inventory = 0;
             }
-        }
-           
+        } 
         $group = $this->group;
         $brandsAll = null;
-    
         if ($group){
-          
             $brandsAll = $group->brands();
-            
         }
      
         $price_calculate = price_calculate($this,$request_color,$request_brand,$request_size);

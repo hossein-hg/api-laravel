@@ -267,7 +267,12 @@ class ProductsController extends Controller
 
             }
         }
-
+        $offer = Offer::where('product_id', $request->id)->first();
+        if ($offer){
+            if ($request->input('discount') === null) {
+                $offer->delete();
+            }
+        }
         if ($request->filled('discount')) {
             $offer = Offer::where('product_id', $request->id)->first();
             if (!$offer) {
@@ -291,6 +296,7 @@ class ProductsController extends Controller
             'success' => true,
             'errors' => null,
         ]);
+
 
     }
 
@@ -346,9 +352,9 @@ class ProductsController extends Controller
         
         $product = Product::findOrFail($id);
         $group = $product->group;
-        $group_id = $group ? $group->id : 0;
+        
         $brands = $group->brands->pluck('id');
-      
+
         // dd($group);
         $companies = CompanyStock::where('product_id', $product->id)->whereIn('brand_id',$brands)->get();
         return response()->json([

@@ -36,8 +36,8 @@ class GroupResource extends JsonResource
                 "turn"=>  $this->turn,
                 "flag"=>  $this->flag, 
                 "color"=>  $this->color,
-                "created_at"=>  $this->created_at,
-                "updated_at"=>  $this->updated_at,
+                'created_at' => $this->created_at ? $this->created_at->format('Y-m-d H:i:s') : null,
+                "updated_at"=>  $this->updated_at ? $this->updated_at->format('Y-m-d H:i:s') : null,
                 "rest_categories"=> $oneCat ?? null,
                 "categories" => GroupResource::collection($this->whenLoaded('children')),
             'brands' => $this->when(

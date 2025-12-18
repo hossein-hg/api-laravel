@@ -23,7 +23,7 @@ class CompanyResource extends JsonResource
             ],
             "brand" => [
                 "name" => $this->brand,
-                "id" => $this->id,
+                "id" => $this->brand_id,
             ],
             "size"=> $this->size,
             "price"=> number_format($price),

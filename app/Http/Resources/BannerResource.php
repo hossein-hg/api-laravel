@@ -19,6 +19,8 @@ class BannerResource extends JsonResource
             // 'product_name' => $this->name,
             'image' => trim($this->image),
             'link' => trim($this->link),
+            'delete'=> false,
+            'type'=> $this->type,
         ];
     }
 }

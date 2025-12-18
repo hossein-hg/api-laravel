@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AddressController;
+use App\Http\Controllers\Admin\bannerController;
 use App\Http\Controllers\Admin\CartController;
 use App\Http\Controllers\Admin\GroupController;
 use App\Http\Controllers\Admin\OrderController;
@@ -195,6 +196,23 @@ Route::middleware('auth:api')->group(function () {
         ;
 
         Route::get('orders/admin-all', [OrderController::class, 'adminAll'])->name('orders-admin-all')
+            // ->middleware(CheckRole::class.':expert-financial')
+        ;
+
+        Route::get('home', [OrderController::class, 'home'])->name('home')
+            // ->middleware(CheckRole::class.':expert-financial')
+        ;
+
+        Route::get('banner', [bannerController::class, 'index'])->name('banner.index')
+            // ->middleware(CheckRole::class.':expert-financial')
+        ;
+        Route::post('banner/store', [bannerController::class, 'index'])->name('banner.index')
+            // ->middleware(CheckRole::class.':expert-financial')
+        ;
+        Route::put('banner/update', [bannerController::class, 'update'])->name('banner.index')
+            // ->middleware(CheckRole::class.':expert-financial')
+        ;
+        Route::get('banner', [bannerController::class, 'index'])->name('banner.index')
             // ->middleware(CheckRole::class.':expert-financial')
         ;
 
@@ -401,7 +419,7 @@ Route::get('get-header', function(){
 
     foreach ($groups as $group) {
 
-        $products = Group::where('parent',$group->id)->get();
+        $products = Group::where('parent_id',$group->id)->get();
         $children = $products->map(function ($product) {
             return [
                 'id' => $product->id,

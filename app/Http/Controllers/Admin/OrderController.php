@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
+use App\Http\Resources\AdminHomeResource;
 use DB;
 use App\Models\User;
 use App\Models\Admin\Cart;
@@ -1487,6 +1488,7 @@ class OrderController extends Controller
                         $product = Product::find($orderProduct->product_id);
                     if ($product){
                                 $product->warehouseInventory -= $ratio * $quantity;
+
                                 $product->save();
                      }
                     }
@@ -1910,7 +1912,7 @@ class OrderController extends Controller
             ->groupBy('role')
             ->map(function ($items) {
                 return LogResource::collection($items);
-            });      
+        });      
         
         $comments = $order->comments;
           
@@ -1977,6 +1979,12 @@ class OrderController extends Controller
             'errors' => null,
         ]);
      
+    }
+
+
+    public function home(){
+        $user = auth()->user();
+        return new AdminHomeResource($user);
     }
 }
 
