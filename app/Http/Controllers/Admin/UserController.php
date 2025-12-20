@@ -216,7 +216,8 @@ class UserController extends Controller
     {
        
         $user = User::findOrFail(request()->id);
-        $user->delete();
+        $user->is_active = $user->is_active == 0 ? 1 : 0;
+        $user->save();
         return response()->json([
             'data' => null,
             'statusCode' => 200,

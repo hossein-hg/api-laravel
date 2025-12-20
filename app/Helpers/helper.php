@@ -164,7 +164,7 @@ use App\Models\Admin\Size;
 
 
 
-function price_calculate($product, $color = null, $brand = null, $size = null, $selectedType = null, $count = null, $user = null)
+function price_calculate($product, $color = null, $brand = null, $size = null, $warranty = null, $selectedType = null, $count = null, $user = null)
 {
 
     $existingProductInCompany = CompanyStock::where('product_id', $product->id)
@@ -184,10 +184,15 @@ function price_calculate($product, $color = null, $brand = null, $size = null, $
                 $query->where('brand', $brand);
             } 
         })
+        ->where(function ($query) use ($warranty) {
+            if (!is_null($warranty)) {
+                $query->where('warranty', $warranty);
+            } 
+        })
         ->first();
-       
-        $price = $existingProductInCompany ? ($product->price + $existingProductInCompany->price) * $product->ratio : $product->price;
-       
+        // dd($existingProductInCompany, $color, $brand, $size);
+        $price = $existingProductInCompany ? ($product->price + $existingProductInCompany->price) * $product->ratio : $product->price * $product->ratio;
+        
     
    
 
@@ -272,15 +277,21 @@ function price_calculate($product, $color = null, $brand = null, $size = null, $
 
     }
 
+
+
+
+
     if (isset($total_product_price)) {
       
         $number_total_product_price = $total_product_price;
-        $total_product_price = $total_product_price ? $total_product_price : 0;
+       
 
 
     } else {
+       
         $total_product_price = $prices['cash'] * $count;
         $number_total_product_price = $total_product_price;
+       
     }
 
     if (isset($one_product)) {

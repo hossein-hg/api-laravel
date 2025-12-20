@@ -31,6 +31,7 @@ class GroupController extends Controller
         return [
              'data' => [
                 'results' => GroupResource::collection($groups),
+                
             ],
             'statusCode' => 200,
             'message' => 'موفقیت آمیز',

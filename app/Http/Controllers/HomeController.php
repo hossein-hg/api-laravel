@@ -31,7 +31,7 @@ class HomeController extends Controller
         $best_groups = Group::with('products')->take(6)->orderBy('id','desc')->get();  
         $setting = Setting::find(1);
         $topBanners = Banner::where('type',1)->get();
-        $banners = Banner::where('type',2)->get();
+        $banners = Banner::where('type',2)->limit(4)->get();
         $maxDiscount = Offer::where('start_time','<',Carbon::now())->where('end_time', '>', Carbon::now())->max('percent');
         $comments = Comment::with('user')->take(5)->get();
         $products = Product::with('category', 'images', 'group', 'options', 'comments', 'colors', 'warranties', 'sizes', 'brands')->limit(5)->get();

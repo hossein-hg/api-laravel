@@ -143,9 +143,6 @@ class ProductRequest extends FormRequest
             "id.required"=> 'آیدی محصول الزامی است',
             "id.exists"=> ' محصول  یافت نشد',
 
-            "accCode.required"=> 'کد حسابداری محصول الزامی است',
-            "accCode.unique"=> ' کد حسابداری  از قبل وجود دارد',
-
 
         ];
     }

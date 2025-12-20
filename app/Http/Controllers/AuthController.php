@@ -111,7 +111,7 @@ class AuthController extends Controller
             $category = $user->category ? $user->category->name : null;
             $user->categoryName = $category ?? '1';
 
-            $user->remaining_credit = $remaining_credit ? $remaining_credit->remaining_amount : $user->category->max_credit;
+            $user->remaining_credit = $remaining_credit ? number_format($remaining_credit->remaining_amount) : number_format($user->category->max_credit);
             return response()->json([
                 'data' => [
                     'user' => $user  

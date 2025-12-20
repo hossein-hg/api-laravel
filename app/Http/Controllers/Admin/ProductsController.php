@@ -268,12 +268,12 @@ class ProductsController extends Controller
                 }
               
 
-                if (!$image and $quantity < 4) {
+                // if (!$image and $quantity < 4) {
                     $image = new Image();
                     $image->product_id = $request->id;
                     $image->path = $imageRequest['url'];
                     $image->save();
-                }
+                // }
 
 
             }

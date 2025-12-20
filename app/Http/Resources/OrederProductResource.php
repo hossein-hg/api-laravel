@@ -14,17 +14,6 @@ class OrederProductResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        if (request()->route()->getName() == 'home'){
-            return [
-                'id' => $this->id,
-                'name' => trim($this->name),
-                'en_name' => trim($this->en_name),
-                'sales_count' => $this->salesCount,
-                'price' => number_format($this->price),
-                'cover' => $this->cover ?? null,
-                'categoryName' => $this->group ? $this->group->name : null,
-            ];
-        }
         
         return [
             'id' => $this->id,
@@ -32,6 +21,7 @@ class OrederProductResource extends JsonResource
             'en_name' => trim($this->en_name),
             'count'=>$this->quantity,
             'size'=>$this->size,
+            'warranty'=>$this->warranty,
             'brand'=>$this->brand,
             'pay_type'=>$this->pay_type,
             'color'=>$this->color,
