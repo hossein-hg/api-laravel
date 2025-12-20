@@ -34,9 +34,9 @@ class AddUserRequest extends FormRequest
                 "category_id"=> ["required","exists:user_categories,id"],
                 "user_type"=> ["required","string", "in:regular,legal"],
                 "company_name"=> ["required_if:user_type,legal","string",'nullable'],
-                "national_code"=> ["required_if:user_type,legal","string",'nullable'],
-                "economic_code"=> ["required_if:user_type,legal","string",'nullable'],
-                "registration_number"=> ["required_if:user_type,legal","string",'nullable'],
+                "national_code"=> ["required_if:user_type,legal","string",'nullable','max:10'],
+                "economic_code"=> ["required_if:user_type,legal","string",'nullable','max:10'],
+                "registration_number"=> ["required_if:user_type,legal","string",'nullable','max:7'],
                 "is_active"=> ["boolean"],
                 
             ];
@@ -51,9 +51,9 @@ class AddUserRequest extends FormRequest
                 "category_id" => ["required", "exists:user_categories,id"],
                 "user_type" => ["required", "string", "in:regular,legal"],
                 "company_name" => ["required_if:user_type,legal", "string",'nullable'],
-                "national_code" => ["required_if:user_type,legal", "string",'nullable'],
-                "economic_code" => ["required_if:user_type,legal", "string",'nullable'],
-                "registration_number" => ["required_if:user_type,legal", "string",'nullable'],
+                "national_code" => ["required_if:user_type,legal", "string",'nullable','max:10'],
+                "economic_code" => ["required_if:user_type,legal", "string",'nullable','max:10'],
+                "registration_number" => ["required_if:user_type,legal", "string",'nullable','max:7'],
                 "is_active" => ["boolean"],
 
             ];
@@ -82,8 +82,11 @@ class AddUserRequest extends FormRequest
 
             'company_name.required_if'=> 'نام شرکت الزامی است',
             'national_code.required_if'=> 'شمتاسه ملی  الزامی است',
+            'national_code.max'=> 'شناسه ملی حداکثر باید 10 رقم باشد ',
             'economic_code.required_if'=> ' کد اقتصادی  الزامی است',
+            'economic_code.max'=> ' کد اقتصادی حداکثر باید 10 رقم باشد ',
             'registration_number.required_if'=> ' شناسه ثبت الزامی است',
+            'registration_number.max'=> 'شناسه ثبت حداکثر باید 7 رقم باشد ',
 
            
 

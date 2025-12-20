@@ -14,11 +14,12 @@ class OrderCommentResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        
         return [
-            'id'=> $this->id,
-            'description'=> $this->description,
-            'name'=> $this->user ? $this->user->name : null,
-            'role'=> $this->role,
+            'id'=> $this->id ?? null,
+            'description'=> $this->description ?? null,
+            'name' => $this?->user?->name ?? null,
+            'role'=> $this->role ?? null,
         ];
     }
 }

@@ -147,18 +147,18 @@ class CartController extends Controller
         $product = Product::findOrFail($request['id']);
         $existingProductInCompany = CompanyStock::where('product_id', $product->id)
             ->where(function ($query) use ($color) {
-                if (!is_null($color)) {
+                if ( $color != 'null') {
                     $query->where('color_code', $color);
                 }
             })
             ->where(function ($query) use ($size) {
-                if (!is_null($size)) {
+                if ($size != 'null') {
 
                     $query->where('size', $size);
                 }
             })
             ->where(function ($query) use ($brand) {
-                if (!is_null($brand)) {
+                if ($brand != 'null') {
                     $query->where('brand', $brand);
                 }
             })
@@ -170,18 +170,18 @@ class CartController extends Controller
         );
         $existingProductInPivot = CartProduct::where('product_id', $product->id)->where('cart_id', $cart->id)
             ->where(function ($query) use ($color) {
-                if (!is_null($color)) {
+                if ($color != 'null') {
                     $query->where('color', $color);
                 } 
             })
             ->where(function ($query) use ($size) {
-                if (!is_null($size)) {
+                if ($size != 'null') {
 
                     $query->where('size', $size);
                 } 
             })
             ->where(function ($query) use ($brand) {
-                if (!is_null($brand)) {
+                if ($brand != 'null') {
                     $query->where('brand', $brand);
                 } 
             })
@@ -189,6 +189,7 @@ class CartController extends Controller
             
             $inventory = true;
             $is_exist = false;
+            
             $calc_price = price_calculate($product, $color, $brand, $size, $request['selectedPrice'], $count);
       
             if ($existingProductInCompany){
@@ -248,7 +249,7 @@ class CartController extends Controller
       
             }
             else{
-            
+                
                 if ($product->warehouseInventory < ($count * $product->ratio)) {
                     $inventory = false;
                     if ($existingProductInPivot) {

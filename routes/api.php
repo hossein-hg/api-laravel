@@ -206,13 +206,13 @@ Route::middleware('auth:api')->group(function () {
         Route::get('banner', [bannerController::class, 'index'])->name('banner.index')
             // ->middleware(CheckRole::class.':expert-financial')
         ;
-        Route::post('banner/store', [bannerController::class, 'index'])->name('banner.index')
+        Route::post('banner/store', [bannerController::class, 'store'])->name('banner.index')
             // ->middleware(CheckRole::class.':expert-financial')
         ;
         Route::put('banner/update', [bannerController::class, 'update'])->name('banner.index')
             // ->middleware(CheckRole::class.':expert-financial')
         ;
-        Route::get('banner', [bannerController::class, 'index'])->name('banner.index')
+        Route::post('banner/delete', [bannerController::class, 'delete'])->name('banner.delete')
             // ->middleware(CheckRole::class.':expert-financial')
         ;
 
@@ -391,51 +391,45 @@ Route::get('get-footer',function(){
     ]);
 });
 Route::get('get-header', function(){
-    $categories = Group::where('level',1)->get();
-    $array = [];
-    foreach ($categories as $category){
-        $arr = [
-            'id' => $category->id,
-            'faName' => $category->name,
-            'path' => $category->name,
-            'children' => [
-                                [
-                                    'id' => 1,
-                                    'faName' => 'سمند',
-                                    'path' => 'samand',
-                                ],
-                                [
-                                    'id' => 2,
-                                    'faName' => 'پیکان',
-                                    'path' => 'peykan',
-                                ],
-            ]
-        ];
-        array_push($array, $arr);
-    }
-    $groups = Group::where('level', 1)->get();
+    
+    
 
-    $output = [];
 
-    foreach ($groups as $group) {
 
-        $products = Group::where('parent_id',$group->id)->get();
-        $children = $products->map(function ($product) {
+    $groups = Group::where('parent_id', null)
+        ->with('children.products')
+        ->get();
+
+    $output = $groups->map(function ($group) {
+        $children = $group->children->map(function ($subCategory) use ($group) {
+            $productChildren = $subCategory->products->map(function ($product) use ($group, $subCategory) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name ?? null,
+                    'en_name' => $product->en_name ?? null,
+                    'path' => $product->en_name ?? null,
+                    'price' => $product->price * $product->ratio ?? null,
+                    'cover' => $product->cover ?? null,
+                ];
+            })->toArray();
+
             return [
-                'id' => $product->id,
-                'faName' => $product->name,
-                'path' =>  $product->name,
+                'id' => $subCategory->id,
+                'faName' => $subCategory->name,
+                'path' => $subCategory->name,
+                'children' => $productChildren,
             ];
         })->toArray();
-        $output[] = [
+
+        return [
             'id' => $group->id,
             'faName' => $group->name,
-            // 'path' => $group->name,
+            'path' => $group->name,
             'icon' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" fill-rule="evenodd" d="M464 144c8.837 0 16 7.163 16 16v304c0 8.836-7.163 16-16 16H160c-8.837 0-16-7.164-16-16V160c0-8.837 7.163-16 16-16zm-52 68H212v200h200zm493.333 87.686c6.248 6.248 6.248 16.379 0 22.627l-181.02 181.02c-6.248 6.248-16.378 6.248-22.627 0l-181.019-181.02c-6.248-6.248-6.248-16.379 0-22.627l181.02-181.02c6.248-6.248 16.378-6.248 22.627 0zm-84.853 11.313L713 203.52L605.52 311L713 418.48zM464 544c8.837 0 16 7.164 16 16v304c0 8.837-7.163 16-16 16H160c-8.837 0-16-7.163-16-16V560c0-8.836 7.163-16 16-16zm-52 68H212v200h200zm452-68c8.837 0 16 7.164 16 16v304c0 8.837-7.163 16-16 16H560c-8.837 0-16-7.163-16-16V560c0-8.836 7.163-16 16-16zm-52 68H612v200h200z"/></svg>',
 
-            'children' => $children
+            'children' => $children,
         ];
-    }
+    })->toArray();
     $categories =  response()->json($output);
     
     return response()->json([

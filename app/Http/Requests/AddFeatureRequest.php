@@ -38,7 +38,7 @@ class AddFeatureRequest extends FormRequest
             'rows.*.warranty' => ['nullable', 'string', 'max:20'],
             'rows.*.price' => ['required', 'string', 'max:20'],
             'rows.*.count' => ['required', 'integer', 'min:0'],
-            'rows.*.accCode' => ['required', 'integer'],
+            'rows.*.accCode' => ['required', 'integer','unique:product_company_stocks,accCode'],
         ];
     }
 
@@ -53,6 +53,7 @@ class AddFeatureRequest extends FormRequest
             'min' => ':attribute نباید کمتر از :min باشد.',
             'max' => ':attribute نباید بیشتر از :max کاراکتر باشد.',
             'exists' => ':attribute معتبر نیست.',
+            'unique' => ':attribute  از قبل وجود دارد.',
         ];
     }
 

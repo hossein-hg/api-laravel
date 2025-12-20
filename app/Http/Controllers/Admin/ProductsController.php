@@ -72,6 +72,7 @@ class ProductsController extends Controller
 
 
         if ($request->filled('filterCategory')) {
+           
             $categories = explode(',', $request->filterCategory);
 
             $query->whereHas('group', function ($q) use ($categories) {
@@ -95,11 +96,21 @@ class ProductsController extends Controller
             $query->where('inventory', '>=', $inventory);
         }
 
+        
+        // $products = Product::with('group.brands')->get();
+        // foreach($products as $p){
+        //     dump( $p->name . ' => ' . $p->group->name . "\n");
+        //     foreach($p->group->brands as $b){
+        //         dump('- ' . $b->name . "\n");
+        //     }
+        // }
+       
+
         if ($request->filled('filterBrand')) {
             $brands = explode(',', $request->filterBrand);
-
-            $query->whereHas('brands', function ($q) use ($brands) {
-                $q->whereIn('name', $brands);
+            
+            $query->whereHas('companyStocks', function ($q) use ($brands) {
+                $q->whereIn('brand', $brands);
             });
         }
 
@@ -257,12 +268,12 @@ class ProductsController extends Controller
                 }
               
 
-                if (!$image and $quantity < 4) {
+                // if (!$image and $quantity < 4) {
                     $image = new Image();
                     $image->product_id = $request->id;
                     $image->path = $imageRequest['url'];
                     $image->save();
-                }
+                // }
 
 
             }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Models\Admin\Credit;
 use App\Models\Admin\UserCategory;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -101,13 +102,14 @@ class AuthController extends Controller
                 ], 401);
             }
 
-
-
-
-
+            $remaining_credit = Credit::where('user_id', $user->id)->select('remaining_amount')->latest('id')->first();
+            
+            
 
             $category = $user->category ? $user->category->name : null;
             $user->categoryName = $category ?? '1';
+
+            $user->remaining_credit = $remaining_credit ? number_format($remaining_credit->remaining_amount) : number_format($user->category->max_credit);
             return response()->json([
                 'data' => [
                     'user' => $user  

@@ -32,9 +32,9 @@ class ProductRequest extends FormRequest
                 'subCategory_id'=> ['required','integer','exists:groups,id'],
                 'price'=> ['integer'],
                 'description'=> ['required','string', 'min:5'],
-                'inventory' => ['required','boolean'],
+                'inventory' => ['required_if:type,false','boolean'],
                 'ratio' => ['required','integer'],
-                'warehouseInventory' => ['required','integer'],
+                'warehouseInventory' => ['required_if:type,false','integer'],
                 'cover' => ['required','string'],
                 'type' => ['required','boolean'],
                 'images' => ['nullable','array'],
@@ -45,6 +45,7 @@ class ProductRequest extends FormRequest
                 'discount_end_time'=> ['required_with:discount'],
                 'discount_start_time'=> ['required_with:discount'],
                 'max_sell' => ['required', 'integer'],
+                'accCode'=> ['required','unique:products,accCode']
             ];
         }
         else{
@@ -56,9 +57,9 @@ class ProductRequest extends FormRequest
                 'subCategory_id' => ['required', 'integer', 'exists:groups,id'],
                 'price' => ['integer'],
                 'description' => ['required', 'string', 'min:5'],
-                'inventory' => ['required', 'boolean'],
+                'inventory' => ['required_if:type,false','boolean'],
                 'ratio' => ['required', 'integer'],
-                'warehouseInventory' => ['required', 'integer'],
+                'warehouseInventory' => ['required_if:type,false', 'integer'],
                 'cover' => ['required','string'],
                 'type' => ['required','boolean'],
                 'images' => ['nullable', 'array'],
@@ -69,6 +70,7 @@ class ProductRequest extends FormRequest
                 'discount_end_time' => ['required_with:discount'],
                 'discount_start_time' => ['required_with:discount'],
                 'max_sell'=> ['required','integer'],
+                'accCode'=> ['required','unique:products,accCode']
 
             ];
         }

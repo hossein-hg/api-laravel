@@ -14,7 +14,7 @@ class GroupCollection extends ResourceCollection
      */
     public function toArray(Request $request): array
     {
-        
+
         return [
             'data' => [
                 'results' => GroupResource::collection($this->collection),

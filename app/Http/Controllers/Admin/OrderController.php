@@ -786,6 +786,7 @@ class OrderController extends Controller
         
         
         $order = Order::findOrFail($request->order_id);
+        // dd($request->post('brand'));
         $user = $order->user;
         $product = Product::findOrFail($request->product_id);
         $selectedColor = $request->post('color') ?? null;
@@ -821,29 +822,26 @@ class OrderController extends Controller
                 }
             })
             ->first();
+        // dd($existingProductInPivot);
+         
         $row = OrderProduct::where('product_id', $product->id)->where('order_id', $order->id)
             ->where(function ($query) use ($selectedOldColorGet) {
-                if (is_null($selectedOldColorGet)) {
-                    $query->whereNull('color');
-                } else {
+                if ($selectedOldColorGet != "null") {
                     $query->where('color', $selectedOldColorGet);
-                }
+                } 
             })
             ->where(function ($query) use ($selectedOldSizeGet) {
-                if (is_null($selectedOldSizeGet)) {
+                if ($selectedOldSizeGet != "null") {
 
-                    $query->whereNull('size');
-                } else {
                     $query->where('size', $selectedOldSizeGet);
-                }
+                } 
             })
             ->where(function ($query) use ($selectedOldBrandGet) {
-                if (is_null($selectedOldBrandGet)) {
-                    $query->whereNull('brand');
-                } else {
+                if (($selectedOldBrandGet != "null")) {
                     $query->where('brand', $selectedOldBrandGet);
-                }
+                } 
             })->first();
+          
         if($existingProductInPivot and $row){
             
             if ($existingProductInPivot->id != $row->id) {
@@ -852,6 +850,18 @@ class OrderController extends Controller
             }
         }    
         if($row){
+
+            $all_company = CompanyStock::where('product_id', $product->id)->get();
+            $brands = $all_company->pluck('brand')->unique()->toArray();
+            $new_query = CompanyStock::where('product_id', $product->id);
+            $brandObj = CompanyStock::where('brand', $selectedBrandGet)->value('brand');
+            
+            $colors = array_filter($new_query->where('product_id', $product->id)->where('brand', $brandObj)->distinct()->pluck('color_code')->values()->toArray());
+
+            $sizes = array_filter($new_query->where('product_id', $product->id)->where('brand', $brandObj)->distinct()->pluck('size')->values()->toArray());
+            $warranties = array_filter($new_query->where('product_id', $product->id)->where('brand', $brandObj)->distinct()->pluck('warranty')->values()->toArray());
+
+
             $previous_color = $row->color ?? null;
             $previous_size = $row->size ?? null;
             $previous_brand = $row->brand ?? null;
@@ -867,12 +877,12 @@ class OrderController extends Controller
             }
 
            
-             if (request()->getMethod() == 'POST'){
-                $calc_price = price_calculate($product, $selectedColorGet, $selectedBrandGet, $selectedSizeGet, selectedType: $request['selectedPrice'], count: $request->post('count'), user: $user);
+             if (request()->getMethod() == 'GET'){
+                $calc_price = price_calculate($product, $selectedColorGet, $selectedBrandGet, $selectedSizeGet, selectedType: $request['selectedPrice'], count: $request->query('count'), user: $user);
              }
              else{
                 
-                $calc_price = price_calculate($product, $selectedColor, $selectedBrand, $selectedSize, selectedType: $request['selectedPrice'], count: $request->query('count'),user: $user);
+                $calc_price = price_calculate($product, $selectedColor, $selectedBrand, $selectedSize, selectedType: $request['selectedPrice'], count: $request->post('count'),user: $user);
              }
             
             if (request()->getMethod() == 'POST'):
@@ -912,9 +922,10 @@ class OrderController extends Controller
                         'color' => $request->query('color'),
                         'brand' => $request->query('brand'),
                         'count' => $request->query('count'),
-                        'colors' => $product->colors->pluck('color'),
-                        'brands' => $product->brands->pluck('name'),
-                        'sizes' => $product->sizes->pluck('size'),
+                        'colors' => $colors,
+                        'brands' => $brands,
+                        'sizes' => $sizes,
+                        'waranties' => $warranties,
                         'categoryName' => $product->group->name ?? '',
                         'selected_count' => $product_count,
                         'selected_color' => $previous_color,
@@ -962,8 +973,9 @@ class OrderController extends Controller
     }
 
     public function addProduct(Request $request){
-        
+       
         $product = Product::findOrFail($request->id);
+
         
         $count = $request->count;
         $color = $request->color ?? null;
@@ -981,12 +993,8 @@ class OrderController extends Controller
             'id' => $request->id,
             'count' => $request->count,
         ];
-
         
 
-       
-        
-        
         $selectedPrice = $request['selectedPrice'] ?? 'cash';
         if ($request->getMethod() == 'POST') {
         if (!in_array($selectedPrice, $validatedValues) && !preg_match('/^day_\d+$/', $selectedPrice)) {
@@ -1001,7 +1009,7 @@ class OrderController extends Controller
         }
         $env = false;
         $existingProductInCompany = CompanyStock::where('product_id', $product->id)
-            ->where(function ($query) use ($color) {
+            ->where(column: function ($query) use ($color) {
                 if (!is_null($color)) {
                     $query->where('color_code', $color);
                 }
@@ -1018,6 +1026,7 @@ class OrderController extends Controller
                 }
             })
             ->first();
+        $companyStockFirst = CompanyStock::where('product_id',$product->id)->first();
 
         $existingProductInPivot = OrderProduct::where('product_id', $product->id)->where('order_id', $order->id)
             ->where(function ($query) use ($color) {
@@ -1037,7 +1046,17 @@ class OrderController extends Controller
                 }
             })
             ->first();
-     
+        if ($existingProductInCompany) {
+            $color_name = $existingProductInCompany->color_code ?? null;
+            $brand_name = $existingProductInCompany->brand ?? null;
+            $size_name = $existingProductInCompany->size ?? null;
+            $warranty_name = $existingProductInCompany->warranty ?? null;
+        } else {
+            $color_name = $companyStockFirst ? $companyStockFirst->color_code : null;
+            $brand_name = $companyStockFirst ? $companyStockFirst->brand : null;
+            $size_name = $companyStockFirst ? $companyStockFirst->size : null;
+            $warranty_name = $existingProductInCompany->warranty ?? null;
+        }
         $exist = $existingProductInPivot ? true : false;    
         if ($request->getMethod() == 'POST' ){
             $inventory = true;
@@ -1267,7 +1286,20 @@ class OrderController extends Controller
             
             
             $selectedPrice = $request['selectedPrice'] ?? 'cash';
-            
+            $all_company = CompanyStock::where('product_id', $product->id)->get();
+            $brands = $all_company->pluck('brand')->unique()->toArray();
+            $new_query = CompanyStock::where('product_id', $product->id);
+            if ($brand){
+                $brandObj = CompanyStock::where('brand', $brand)->value('brand');
+                // dd($brandObj);
+            } else {
+                $brandObj = CompanyStock::where('brand', $brand_name)->value('brand');
+            }
+           
+            $colors = array_filter($new_query->where('product_id', $product->id)->where('brand', $brandObj)->distinct()->pluck('color_code')->values()->toArray());
+
+            $sizes = array_filter($new_query->where('product_id', $product->id)->where('brand', $brandObj)->distinct()->pluck('size')->values()->toArray());
+            $warranties = array_filter($new_query->where('product_id', $product->id)->where('brand', $brandObj)->distinct()->pluck('warranty')->values()->toArray());
             
             if ($selectedPrice){
                 if (!in_array($selectedPrice, $validatedValues) && !preg_match('/^day_\d+$/', $selectedPrice)) {
@@ -1297,16 +1329,18 @@ class OrderController extends Controller
                     'color' => $request->query('color'),
                     'brand' => $request->query('brand'),
                     'count' => $request->query('count'),
-                    'colors' => $product->colors->pluck('color'),
-                    'brands' => $product->brands->pluck('name'),
+                    'colors' => $colors,
+                    'brands' => $brands,
+                    'warranties' => $warranties,
                     'inventory'=> $product->inventory,
                     'existInOrder'=> $exist ? 1 : 0,
-                    'sizes' => $product->sizes->pluck('size'),
+                    'sizes' => $sizes,
                     'categoryName' => $product->group->name ?? '',
                     'product_price' => $calc_price['prices'],
                     'old_product_price' => $calc_price['oldPrices'],
                     'product_total_price' => $calc_price['total_price'],
                     'alertMessage' => $env ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
+                    'defaults' => ['color' => $color_name ?? null, 'size' => $size_name ?? null, 'brand' => $brand_name ?? null, 'warranty' => $warranty_name ?? null]
                     
                 ],
 
