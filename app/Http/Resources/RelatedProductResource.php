@@ -1,23 +1,28 @@
 <?php
 
 namespace App\Http\Resources;
+
+use App\Models\Admin\Size;
+use App\Models\Admin\Brand;
+use App\Models\Admin\Color;
+
 use Illuminate\Http\Request;
 use App\Models\Admin\Product;
 use App\Models\Admin\CompanyStock;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ProductListResource extends JsonResource
+class RelatedProductResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
      *
      * @return array<string, mixed>
      */
-    
+
     public static $wrap = null;
     public function toArray(Request $request): array
     {
-        
+
         $request_color = request()->query('color');
         $request_size = request()->query('size');
         $request_brand = request()->query('brand');
@@ -43,7 +48,7 @@ class ProductListResource extends JsonResource
             $query->where('warranty', $request_warranty);
         }
         $inventory = $this->inventory;
-        if ($this->type == 1){
+        if ($this->type == 1) {
 
 
             $companyStockFirst = CompanyStock::where('product_id', $this->id)->first();
@@ -66,19 +71,26 @@ class ProductListResource extends JsonResource
                         $query->where('brand', $request_brand);
                     }
                 })
+                ->where(function ($query) use ($request_warranty) {
+                    if (!is_null($request_warranty)) {
+                        $query->where('warranty', $request_warranty);
+                    }
+                })
                 ->first();
             if ($existingProductInCompany) {
+
                 $color_name = $existingProductInCompany->color_code ?? null;
                 $brand_name = $existingProductInCompany->brand ?? null;
                 $size_name = $existingProductInCompany->size ?? null;
                 $warranty_name = $existingProductInCompany->warranty ?? null;
-               
-            } elseif(is_null($request_brand) and is_null($request_color) and is_null($request_size)) {
-               
+
+
+            } elseif (is_null($request_brand) and is_null($request_color) and is_null($request_size) and is_null($request_warranty)) {
+
                 $color_name = $companyStockFirst ? $companyStockFirst->color_code : null;
                 $brand_name = $companyStockFirst ? $companyStockFirst->brand : null;
                 $size_name = $companyStockFirst ? $companyStockFirst->size : null;
-                $warranty_name = $existingProductInCompany->warranty ?? null;
+                $warranty_name = $companyStockFirst ? $companyStockFirst->warranty : null;
             }
 
 
@@ -89,14 +101,14 @@ class ProductListResource extends JsonResource
                 //  $query->distinct()->pluck('brand')->values()->toArray()
                 //  :
                 $all_company->pluck('brand')->unique()->toArray();
-            
+
 
             $stocks = CompanyStock::where('product_id', $this->id)
                 ->where('count', '>', 0)
                 ->get();
 
             // پارامترهای فیلتر
-          
+
             $request_color = $request->query('color');
             $request_size = $request->query('size');
             $request_warranty = $request->query('warranty');
@@ -115,47 +127,47 @@ class ProductListResource extends JsonResource
             if ($request_warranty)
                 $filtered = $filtered->where('warranty', $request_warranty);
 
-        
+
 
             $colors = $filtered->pluck('color_code')->unique()->filter()->values()->toArray();
             $sizes = $filtered->pluck('size')->unique()->filter()->values()->toArray();
             $warranties = $filtered->pluck('warranty')->unique()->filter()->values()->toArray();
-       
+
             $count_company = $existingProductInCompany ? $existingProductInCompany->count() : 0;
-            
+
             if ($this->type == 1 and $count_company == 0) {
                 $inventory = 0;
             }
-        } 
+        }
         $group = $this->group;
         $brandsAll = null;
-        if ($group){
+        if ($group) {
             $brandsAll = $group->brands();
         }
-     
-        $price_calculate = price_calculate($this,$request_color,$request_brand,$request_size, $request_warranty);
-        if ($request_feature){
+
+        $price_calculate = price_calculate($this, $request_color, $request_brand, $request_size, $request_warranty);
+        if ($request_feature) {
             return [
                 'id' => $this->id,
                 'name' => trim($this->name),
-                'brands'=> $brandsAll ? $brandsAll->get(['name','id']): null,
+                'brands' => $brandsAll ? $brandsAll->get(['name', 'id']) : null,
                 'price' => $price_calculate['prices'],
                 'oldPrice' => $price_calculate['oldPrices'],
             ];
         }
-      
-        
+
+
         $images = [];
         $parent = $group ? $group->parent : null;
-        if ($this->images){
-                foreach ($this->images as $image){
-                    $images[] = [
-                        'url'=> $image->path,
-                        'delete'=> false,
-                    ];
-                }
+        if ($this->images) {
+            foreach ($this->images as $image) {
+                $images[] = [
+                    'url' => $image->path,
+                    'delete' => false,
+                ];
+            }
         }
-        
+
         $parent_id = $parent ? $parent->id : null;
         return [
             'id' => $this->id,
@@ -167,36 +179,38 @@ class ProductListResource extends JsonResource
             'url' => $this->url,
             'inventory' => $inventory,
             'shortDescription' => trim($this->shortDescription),
-            'description' => trim($this->description),  
-            'salesCount'=> $this->salesCount,
+            'description' => trim($this->description),
+            'salesCount' => $this->salesCount,
             'countDown' => $this->activeOffer()['countDown'],
             'discount_start_time' => $this->offer ? $this->offer->start_time : null,
             'discount_end_time' => $this->offer ? $this->offer->end_time : null,
             'discount_percent' => $this->offer ? $this->offer->percent : 0,
-            'warehouseInventory'=> $this->warehouseInventory,
+            'warehouseInventory' => $this->warehouseInventory,
             'satisfaction' => (int) $this->satisfaction,
-            'additionalInformation'=> $this->additionalInformation,
-            'images' => $this->images ? $images : null, 
+            'additionalInformation' => $this->additionalInformation,
+            'images' => $this->images ? $images : null,
             'categoryName' => $this->group ? trim($this->group->name) : null,
             'categoryPath' => $this->group ? trim($this->group->name) : null,
             'subCategory_id' => $this->group ? $this->group->id : null,
             'category_id' => $parent_id,
-            'stars'=>$this->stars,
+            'stars' => $this->stars,
             'discount' => $this->activeOffer()['percent'],
             'tags' => $this->tags,
             'features' => $this->filtersWithSelectedOptions(),
-            'ratio'=>$this->ratio,
-            'comments'=> $this->comments->pluck('body'),
-            'max_sell'=> $this->max_sell,
-            'type'=> $this->type,
-            'sizes'=> $sizes ?? null,
-            'colors'=> $colors ?? null,
-            'warranties'=> $warranties ?? null,
-            'brands'=> $brands ?? null,
-            'commentsCount'=>$this->comments()->count(),
-            'related_products'=>Product::where('group_id',$this->group_id)->get()->except($this->id),
+            'ratio' => $this->ratio,
+            'comments' => $this->comments->pluck('body'),
+            'max_sell' => $this->max_sell,
+            'type' => $this->type,
+            'sizes' => $sizes ?? null,
+            'colors' => $colors ?? null,
+            'warranties' => $warranties ?? null,
+            'brands' => $brands ?? null,
+            'commentsCount' => $this->comments()->count(),
+            
             'update' => $this->updated_at->format('Y-m-d H:i:s'),
-            'defaults'=> ['color'=> $color_name ?? null, 'size'=> $size_name ?? null, 'brand'=> $brand_name ?? null, 'warranty'=> $warranty_name ?? null]
+            'defaults' => ['color' => $color_name ?? null, 'size' => $size_name ?? null, 'brand' => $brand_name ?? null, 'warranty' => $warranty_name ?? null]
         ];
     }
+
+
 }

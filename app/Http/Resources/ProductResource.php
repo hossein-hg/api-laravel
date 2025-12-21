@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Admin\Size;
 use App\Models\Admin\Brand;
 use App\Models\Admin\Color;
+
 use Illuminate\Http\Request;
 use App\Models\Admin\Product;
 use App\Models\Admin\CompanyStock;
@@ -70,39 +71,37 @@ class ProductResource extends JsonResource
                         $query->where('brand', $request_brand);
                     }
                 })
+                ->where(function ($query) use ($request_warranty) {
+                    if (!is_null($request_warranty)) {
+                        $query->where('warranty', $request_warranty);
+                    }
+                })
                 ->first();
             if ($existingProductInCompany) {
+                
                 $color_name = $existingProductInCompany->color_code ?? null;
                 $brand_name = $existingProductInCompany->brand ?? null;
                 $size_name = $existingProductInCompany->size ?? null;
                 $warranty_name = $existingProductInCompany->warranty ?? null;
-            } else {
+              
+               
+            } elseif(is_null($request_brand) and is_null($request_color) and is_null($request_size) and is_null($request_warranty)) {
+               
                 $color_name = $companyStockFirst ? $companyStockFirst->color_code : null;
                 $brand_name = $companyStockFirst ? $companyStockFirst->brand : null;
                 $size_name = $companyStockFirst ? $companyStockFirst->size : null;
-                $warranty_name = $existingProductInCompany->warranty ?? null;
+                $warranty_name = $companyStockFirst ? $companyStockFirst->warranty : null;
             }
+            
 
-
-
+            
             $brands =
                 // $request_brand 
                 // ?
                 //  $query->distinct()->pluck('brand')->values()->toArray()
                 //  :
                 $all_company->pluck('brand')->unique()->toArray();
-            // $colorsExists = CompanyStock::where('brand', $request_brand)->get();
-            // if ($request_brand) {
-            //     $brandObj = CompanyStock::where('brand', $request_brand)->value('brand');
-            //     // dd($brandObj);
-            // } else {
-            //     $brandObj = CompanyStock::where('brand', $brand_name)->value('brand');
-            // }
-            // $new_query = CompanyStock::where('product_id', $this->id);
-            // $colors = array_filter($new_query->where('product_id', $this->id)->where('brand', $brandObj)->distinct()->pluck('color_code')->values()->toArray());
-
-            // $sizes = array_filter($new_query->where('product_id', $this->id)->where('brand', $brandObj)->distinct()->pluck('size')->values()->toArray());
-            // $warranties = array_filter($new_query->where('product_id', $this->id)->where('brand', $brandObj)->distinct()->pluck('warranty')->values()->toArray());
+            
 
             $stocks = CompanyStock::where('product_id', $this->id)
                 ->where('count', '>', 0)
@@ -113,11 +112,14 @@ class ProductResource extends JsonResource
             $request_color = $request->query('color');
             $request_size = $request->query('size');
             $request_warranty = $request->query('warranty');
-            
+            $request_brand = $request->query('brand');
+
             // فیلتر داینامیک
             $filtered = $stocks;
-
-           
+            if ($request_brand)
+                $filtered = $filtered->where('brand', $request_brand);
+            if ($request_color)
+                $filtered = $filtered->where('color_code', $request_color);
             if ($request_color)
                 $filtered = $filtered->where('color_code', $request_color);
             if ($request_size)
@@ -125,13 +127,12 @@ class ProductResource extends JsonResource
             if ($request_warranty)
                 $filtered = $filtered->where('warranty', $request_warranty);
 
-            // استخراج گزینه‌های موجود
-            // $brands = $stocks->pluck('brand')->unique()->filter()->values()->toArray();
+        
 
             $colors = $filtered->pluck('color_code')->unique()->filter()->values()->toArray();
             $sizes = $filtered->pluck('size')->unique()->filter()->values()->toArray();
             $warranties = $filtered->pluck('warranty')->unique()->filter()->values()->toArray();
-
+           
             $count_company = $existingProductInCompany ? $existingProductInCompany->count() : 0;
 
             if ($this->type == 1 and $count_company == 0) {
@@ -144,7 +145,7 @@ class ProductResource extends JsonResource
             $brandsAll = $group->brands();
         }
 
-        $price_calculate = price_calculate($this, $request_color, $request_brand, $request_size);
+        $price_calculate = price_calculate($this, $request_color, $request_brand, $request_size, $request_warranty);
         if ($request_feature) {
             return [
                 'id' => $this->id,
@@ -166,7 +167,7 @@ class ProductResource extends JsonResource
                 ];
             }
         }
-
+      
         $parent_id = $parent ? $parent->id : null;
         return [
             'id' => $this->id,
@@ -205,7 +206,12 @@ class ProductResource extends JsonResource
             'warranties' => $warranties ?? null,
             'brands' => $brands ?? null,
             'commentsCount' => $this->comments()->count(),
-            'related_products' => Product::where('group_id', $this->group_id)->get()->except($this->id),
+            'related_products' => 
+                RelatedProductResource::collection(
+                    Product::where('group_id', $this->group_id)
+                        ->where('id', '!=', $this->id)
+                        ->get()
+                ),
             'update' => $this->updated_at->format('Y-m-d H:i:s'),
             'defaults' => ['color' => $color_name ?? null, 'size' => $size_name ?? null, 'brand' => $brand_name ?? null, 'warranty' => $warranty_name ?? null]
         ];

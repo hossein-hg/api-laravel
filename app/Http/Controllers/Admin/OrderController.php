@@ -127,10 +127,12 @@ class OrderController extends Controller
                     $productId = $item->product_id;
                     $product = Product::find($productId);
                     $discount = $product->activeOffer()['percent'];
+
                     $size = $item->size;
                     $color = $item->color;
                     $brand = $item->brand;
-                    $order_item = OrderProduct::where('product_id', $productId)->where('size',$size)->where('color', $color)->where('brand', $brand)->where('order_id',$order->id)->first();
+                    $warranty = $item->warranty;
+                    $order_item = OrderProduct::where('product_id', $productId)->where('size',$size)->where('color', $color)->where('brand', $brand)->where('warranty', $warranty)->where('order_id',$order->id)->first();
                     
                     if(!$order_item){
 
@@ -141,6 +143,7 @@ class OrderController extends Controller
                         $order_item->brand = $brand;
                         $order_item->size = $size;
                         $order_item->color = $color;
+                        $order_item->warranty = $warranty;
                         $order_item->discount = $item->discount;
                         $order_item->pay_type = $item->pay_type;
                         $order_item->product_price = $item->product_price;
@@ -344,6 +347,7 @@ class OrderController extends Controller
             'order_product.size',
             'order_product.brand',
             'order_product.color',
+            'order_product.warranty',
             'order_product.product_price',
             'order_product.price as total_price',
             'products.name',
@@ -418,6 +422,7 @@ class OrderController extends Controller
             'order_product.size',
             'order_product.brand',
             'order_product.color',
+            'order_product.warranty',
             'order_product.pay_type',
             'order_product.product_price',
             'order_product.price as total_price',
@@ -493,6 +498,7 @@ class OrderController extends Controller
             'order_product.size',
             'order_product.brand',
             'order_product.color',
+            'order_product.warranty',
             'order_product.pay_type',
             'order_product.product_price',
             'order_product.price as total_price',
@@ -540,6 +546,7 @@ class OrderController extends Controller
         $color = $request->color;
         $brand = $request->brand;
         $size = $request->size;
+        $warranty = $request->warranty;
         $existingProductInPivot = OrderProduct::where('product_id', $product->id)->where('order_id', $orderId)
             ->where(function ($query) use ($color) {
                 if (!is_null($color)) {
@@ -555,6 +562,11 @@ class OrderController extends Controller
             ->where(function ($query) use ($brand) {
                 if (!is_null($brand)) {
                     $query->where('brand', $brand);
+                }
+            })
+            ->where(function ($query) use ($warranty) {
+                if (!is_null($warranty)) {
+                    $query->where('warranty', $warranty);
                 }
             })
             ->first();
@@ -594,6 +606,8 @@ class OrderController extends Controller
                 'products.cover',
                 'order_product.size',
                 'order_product.color',
+                'order_product.brand',
+                'order_product.warranty',
             ])->paginate(10);
             
             $data = [
@@ -786,22 +800,26 @@ class OrderController extends Controller
         
         
         $order = Order::findOrFail($request->order_id);
+        
         // dd($request->post('brand'));
         $user = $order->user;
         $product = Product::findOrFail($request->product_id);
         $selectedColor = $request->post('color') ?? null;
         $selectedSize = $request->post('size') ?? null;
         $selectedBrand = $request->post('brand') ?? null;
+        $selectedWarranty = $request->post('warranty') ?? null;
         $selectedCount = $request->post('count') ?? null;
 
         $selectedColorGet = $request->get('color') ?? null;
         $selectedSizeGet = $request->get('size') ?? null;
         $selectedBrandGet = $request->get('brand') ?? null;
+        $selectedWarrantyGet = $request->get('warranty') ?? null;
         $selectedCountGet = $request->get('count') ?? null;
 
         $selectedOldColorGet = $request->get('oldColor') ?? null;
         $selectedOldSizeGet = $request->get('oldSize') ?? null;
         $selectedOldBrandGet = $request->get('oldBrand') ?? null;
+        $selectedOldWarrantyGet = $request->get('oldWarranty') ?? null;
 
         $is_exist = false;
         $existingProductInPivot = OrderProduct::where('product_id', $product->id)->where('order_id', $order->id)
@@ -821,50 +839,153 @@ class OrderController extends Controller
                     $query->where('brand', $selectedBrandGet);
                 }
             })
+            ->where(function ($query) use ($selectedWarrantyGet) {
+                if (!is_null($selectedWarrantyGet)) {
+                    $query->where('warranty', $selectedWarrantyGet);
+                }
+            })
             ->first();
-        // dd($existingProductInPivot);
+       
          
         $row = OrderProduct::where('product_id', $product->id)->where('order_id', $order->id)
             ->where(function ($query) use ($selectedOldColorGet) {
-                if ($selectedOldColorGet != "null") {
+                if ($selectedOldColorGet != "null" and $selectedOldColorGet != null) {
                     $query->where('color', $selectedOldColorGet);
                 } 
             })
             ->where(function ($query) use ($selectedOldSizeGet) {
-                if ($selectedOldSizeGet != "null") {
+                if ($selectedOldSizeGet != "null" and $selectedOldSizeGet != null) {
 
                     $query->where('size', $selectedOldSizeGet);
                 } 
             })
-            ->where(function ($query) use ($selectedOldBrandGet) {
-                if (($selectedOldBrandGet != "null")) {
+            ->where(function ($query) use ($selectedOldBrandGet ) {
+                if (($selectedOldBrandGet != "null" and $selectedOldBrandGet != null)) {
                     $query->where('brand', $selectedOldBrandGet);
                 } 
-            })->first();
-          
+               
+            })
+            ->where(function ($query) use ($selectedOldWarrantyGet ) {
+                if (($selectedOldWarrantyGet != "null" and $selectedOldWarrantyGet != null)) {
+                    $query->where('warranty', $selectedOldWarrantyGet);
+                } 
+               
+            })
+            ->first();
+        
         if($existingProductInPivot and $row){
-            
-            if ($existingProductInPivot->id != $row->id) {
-                
-                $is_exist = true;
-            }
+
+            $is_exist = OrderProduct::where('product_id', $product->id)
+                ->where('order_id', $order->id)
+
+                // مقادیر جدید
+                ->where(function ($query) use ($selectedColorGet) {
+                    if (isset($selectedColorGet)) {
+                        $query->where('color', $selectedColorGet);
+                    }
+                })
+                ->where(function ($query) use ($selectedSizeGet) {
+                    if (isset($selectedSizeGet)) {
+                        $query->where('size', $selectedSizeGet);
+                    }
+                })
+                ->where(function ($query) use ($selectedBrandGet) {
+                    if (isset($selectedBrandGet)) {
+                        $query->where('brand', $selectedBrandGet);
+                    }
+                })
+                ->where(function ($query) use ($selectedWarrantyGet) {
+                    if (isset($selectedWarrantyGet)) {
+                        $query->where('warranty', $selectedWarrantyGet);
+                    }
+                })
+                // ->where(function ($query) use ($selectedCountGet) {
+                //     if (isset($selectedCountGet)) {
+                //         $query->where('quantity', $selectedCountGet);
+                //     }
+                // })
+
+                ->when($row, function ($q) use ($row) {
+                    $q->where('id', '!=', $row->id);
+                })
+
+                ->exists();
         }    
         if($row){
+            $companyStockFirst = CompanyStock::where('product_id', $product->id)->first();
+            $existingProductInCompany = CompanyStock::where('product_id', $product->id)
+                ->where(function ($query) use ($selectedColorGet) {
+                    if (!is_null($selectedColorGet)) {
+                        $query->where('color_code', $selectedColorGet);
+                    }
+                })
+                ->where(function ($query) use ($selectedSizeGet) {
+                    if (!is_null($selectedSizeGet)) {
 
+                        $query->where('size', $selectedSizeGet);
+                    }
+                })
+                ->where(function ($query) use ($selectedBrandGet) {
+                    if (!is_null($selectedBrandGet)) {
+                        $query->where('brand', $selectedBrandGet);
+                    }
+                })
+                ->where(function ($query) use ($selectedWarrantyGet) {
+                    if (!is_null($selectedWarrantyGet)) {
+                        $query->where('warranty', $selectedWarrantyGet);
+                    }
+                })
+                ->first();
+            
             $all_company = CompanyStock::where('product_id', $product->id)->get();
             $brands = $all_company->pluck('brand')->unique()->toArray();
-            $new_query = CompanyStock::where('product_id', $product->id);
-            $brandObj = CompanyStock::where('brand', $selectedBrandGet)->value('brand');
-            
-            $colors = array_filter($new_query->where('product_id', $product->id)->where('brand', $brandObj)->distinct()->pluck('color_code')->values()->toArray());
+            $stocks = CompanyStock::where('product_id', $product->id)
+                ->where('count', '>', 0)
+                ->get();
 
-            $sizes = array_filter($new_query->where('product_id', $product->id)->where('brand', $brandObj)->distinct()->pluck('size')->values()->toArray());
-            $warranties = array_filter($new_query->where('product_id', $product->id)->where('brand', $brandObj)->distinct()->pluck('warranty')->values()->toArray());
+          
+            $request_color = $request->query('color');
+            $request_size = $request->query('size');
+            $request_warranty = $request->query('warranty');
+            $request_brand = $request->query('brand');
+
+            $filtered = $stocks;
+            if ($request_brand)
+                $filtered = $filtered->where('brand', $request_brand);
+            if ($request_color)
+                $filtered = $filtered->where('color_code', $request_color);
+            if ($request_color)
+                $filtered = $filtered->where('color_code', $request_color);
+            if ($request_size)
+                $filtered = $filtered->where('size', $request_size);
+            if ($request_warranty)
+                $filtered = $filtered->where('warranty', $request_warranty);
+
+        
+
+            $colors = $filtered->pluck('color_code')->unique()->filter()->values()->toArray();
+            $sizes = $filtered->pluck('size')->unique()->filter()->values()->toArray();
+            $warranties = $filtered->pluck('warranty')->unique()->filter()->values()->toArray();
+
+            if ($existingProductInCompany) {
+
+                $color_name = $existingProductInCompany->color_code ?? null;
+                $brand_name = $existingProductInCompany->brand ?? null;
+                $size_name = $existingProductInCompany->size ?? null;
+                $warranty_name = $existingProductInCompany->warranty ?? null;
 
 
+            } elseif (is_null($request_brand) and is_null($request_color) and is_null($request_size) and is_null($request_warranty)) {
+
+                $color_name = $companyStockFirst ? $companyStockFirst->color_code : null;
+                $brand_name = $companyStockFirst ? $companyStockFirst->brand : null;
+                $size_name = $companyStockFirst ? $companyStockFirst->size : null;
+                $warranty_name = $companyStockFirst ? $companyStockFirst->warranty : null;
+            }
             $previous_color = $row->color ?? null;
             $previous_size = $row->size ?? null;
             $previous_brand = $row->brand ?? null;
+            $previous_warranty = $row->warranty ?? null;
             $product_count = $row->quantity ?? null;
             $inventory = false;
             if ($selectedCount or $selectedCountGet) {
@@ -878,27 +999,23 @@ class OrderController extends Controller
 
            
              if (request()->getMethod() == 'GET'){
-                $calc_price = price_calculate($product, $selectedColorGet, $selectedBrandGet, $selectedSizeGet, selectedType: $request['selectedPrice'], count: $request->query('count'), user: $user);
+                $calc_price = price_calculate($product, $selectedColorGet, $selectedBrandGet, $selectedSizeGet,$selectedWarrantyGet ,selectedType: $request['selectedPrice'], count: $request->query('count'), user: $user);
              }
              else{
-                
-                $calc_price = price_calculate($product, $selectedColor, $selectedBrand, $selectedSize, selectedType: $request['selectedPrice'], count: $request->post('count'),user: $user);
+                $calc_price = price_calculate($product, $selectedColor, $selectedBrand, $selectedSize, $selectedWarranty, selectedType: $request['selectedPrice'], count: $request->post('count'),user: $user);
              }
             
             if (request()->getMethod() == 'POST'):
-                
                 $row->product_price = $calc_price['number_one_product'];
                 $old_total_product_price = $row->price;
                 $row->price = $calc_price['number_total_product_price'];
                 $row->color = $selectedColor;
                 $row->size = $selectedSize;
                 $row->brand = $selectedBrand;
+                $row->warranty = $selectedWarranty;
                 $row->save();
-               
-                // $new_product_price = $new_product_price + $diffSize + $diffBrand + $diffColor; // for one product 
+                
                 $new_total_price = ($order->total_price - $old_total_product_price + $calc_price['number_total_product_price']);
-
-
                 $order->total_price = $new_total_price;
                 $order->save();
                 $user = auth()->user();
@@ -921,18 +1038,21 @@ class OrderController extends Controller
                         'size' => $request->query('size'),
                         'color' => $request->query('color'),
                         'brand' => $request->query('brand'),
+                        'warranty' => $request->query('warranty'),
                         'count' => $request->query('count'),
                         'colors' => $colors,
                         'brands' => $brands,
                         'sizes' => $sizes,
-                        'waranties' => $warranties,
+                        'warranties' => $warranties,
                         'categoryName' => $product->group->name ?? '',
                         'selected_count' => $product_count,
                         'selected_color' => $previous_color,
                         'selected_brand' => $previous_brand,
+                        'selected_warranty' => $previous_warranty,
                         'selected_size' => $previous_size,
                         'product_price' => $calc_price['one_product'],
                         'product_total_price' => $calc_price['total_price'],
+                        'defaults' => ['color' => $color_name ?? null, 'size' => $size_name ?? null, 'brand' => $brand_name ?? null, 'warranty' => $warranty_name ?? null],
                         'alertMessage' => $inventory ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
                         'existInOrder' => $is_exist ? 1 : 0,
 
@@ -981,6 +1101,7 @@ class OrderController extends Controller
         $color = $request->color ?? null;
         $size = $request->size ?? null;
         $brand = $request->brand ?? null;
+        $warranty = $request->warranty ?? null;
         $order = Order::findOrFail($request->order_id);
         $validatedValues = ['credit', 'cash'];
 
@@ -1025,7 +1146,13 @@ class OrderController extends Controller
                     $query->where('brand', $brand);
                 }
             })
+            ->where(function ($query) use ($warranty) {
+                if (!is_null($warranty)) {
+                    $query->where('warranty', $warranty);
+                }
+            })
             ->first();
+          
         $companyStockFirst = CompanyStock::where('product_id',$product->id)->first();
 
         $existingProductInPivot = OrderProduct::where('product_id', $product->id)->where('order_id', $order->id)
@@ -1045,23 +1172,29 @@ class OrderController extends Controller
                     $query->where('brand', $brand);
                 }
             })
+            ->where(function ($query) use ($warranty) {
+                if (!is_null($warranty)) {
+                    $query->where('warranty', $warranty);
+                }
+            })
             ->first();
         if ($existingProductInCompany) {
+            
             $color_name = $existingProductInCompany->color_code ?? null;
             $brand_name = $existingProductInCompany->brand ?? null;
             $size_name = $existingProductInCompany->size ?? null;
             $warranty_name = $existingProductInCompany->warranty ?? null;
-        } else {
+        } elseif(is_null($brand) and is_null($color) and is_null($size) and is_null($warranty)) {
             $color_name = $companyStockFirst ? $companyStockFirst->color_code : null;
             $brand_name = $companyStockFirst ? $companyStockFirst->brand : null;
             $size_name = $companyStockFirst ? $companyStockFirst->size : null;
-            $warranty_name = $existingProductInCompany->warranty ?? null;
+            $warranty_name = $companyStockFirst->warranty ?? null;
         }
         $exist = $existingProductInPivot ? true : false;    
         if ($request->getMethod() == 'POST' ){
             $inventory = true;
            
-            $calc_price = price_calculate($product, $color, $brand, $size, $request['selectedPrice'], $count, $user);
+            $calc_price = price_calculate($product, $color, $brand, $size, $warranty, selectedType: $request['selectedPrice'], count: $count, user: $user);
 
             if ($existingProductInCompany) {
               
@@ -1074,15 +1207,12 @@ class OrderController extends Controller
 
                 if ($inventory) {
                     if ($existingProductInPivot) {
-
-                       
                         $existingProductInPivot->quantity = $count;
-
                         $existingProductInPivot->price = $calc_price['number_total_product_price'];
-
                         $existingProductInPivot->color = $existingProductInCompany->color_code;
                         $existingProductInPivot->size = $existingProductInCompany->size;
                         $existingProductInPivot->brand = $existingProductInCompany->brand;
+                        $existingProductInPivot->warranty = $existingProductInCompany->warranty;
                         $existingProductInPivot->product_price = $calc_price['number_one_product'];
                         $existingProductInPivot->pay_type = $request['selectedPrice'];
                         $existingProductInPivot->save();
@@ -1095,6 +1225,7 @@ class OrderController extends Controller
                         $new_cart_order_record->price = $calc_price['number_total_product_price'];
                         $new_cart_order_record->color = $existingProductInCompany->color_code;
                         $new_cart_order_record->size = $existingProductInCompany->size;
+                        $new_cart_order_record->warranty = $existingProductInCompany->warranty;
                         $new_cart_order_record->brand = $existingProductInCompany->brand;
                         $new_cart_order_record->product_price = $calc_price['number_one_product'];
                         $new_cart_order_record->pay_type = $request['selectedPrice'];
@@ -1170,9 +1301,10 @@ class OrderController extends Controller
             $total_price = $product->pivot->price;
             $color = $product->pivot->color;
 
-            $product_price = $product->pivot->product_price;
-            $size = $product->pivot->size;
-            $brand = $product->pivot->brand;
+            $product_price = $product->pivot?->product_price;
+            $size = $product->pivot?->size;
+            $brand = $product->pivot?->brand;
+            $warranty = $product->pivot?->warranty;
             $price = $product->price;
             $discount = $product->activeOffer()['percent'];
             if ($discount > 0) {
@@ -1192,6 +1324,7 @@ class OrderController extends Controller
                 'color' => $color,
                 'size' => $size,
                 'brand' => $brand,
+                'warranty' => $warranty,
                 'selectedPrice' => $product->pivot->pay_type,
                 "alertMessage" => $env  ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
             ];
@@ -1282,24 +1415,44 @@ class OrderController extends Controller
                 }
             }
             $user = $order->user;
-            $calc_price = price_calculate($product, $color, $brand, $size, $request['selectedPrice'], $count, $user);
+           
+            $calc_price = price_calculate($product, $color, $brand, $size, $warranty,selectedType: $request['selectedPrice'], count:$count, user:$user);
             
             
             $selectedPrice = $request['selectedPrice'] ?? 'cash';
+            
             $all_company = CompanyStock::where('product_id', $product->id)->get();
             $brands = $all_company->pluck('brand')->unique()->toArray();
-            $new_query = CompanyStock::where('product_id', $product->id);
-            if ($brand){
-                $brandObj = CompanyStock::where('brand', $brand)->value('brand');
-                // dd($brandObj);
-            } else {
-                $brandObj = CompanyStock::where('brand', $brand_name)->value('brand');
-            }
-           
-            $colors = array_filter($new_query->where('product_id', $product->id)->where('brand', $brandObj)->distinct()->pluck('color_code')->values()->toArray());
+            $stocks = CompanyStock::where('product_id', $product->id)
+                ->where('count', '>', 0)
+                ->get();
 
-            $sizes = array_filter($new_query->where('product_id', $product->id)->where('brand', $brandObj)->distinct()->pluck('size')->values()->toArray());
-            $warranties = array_filter($new_query->where('product_id', $product->id)->where('brand', $brandObj)->distinct()->pluck('warranty')->values()->toArray());
+            // پارامترهای فیلتر
+          
+            $request_color = $request->query('color');
+            $request_size = $request->query('size');
+            $request_warranty = $request->query('warranty');
+            $request_brand = $request->query('brand');
+
+            // فیلتر داینامیک
+            $filtered = $stocks;
+            if ($request_brand)
+                $filtered = $filtered->where('brand', $request_brand);
+            if ($request_color)
+                $filtered = $filtered->where('color_code', $request_color);
+            if ($request_color)
+                $filtered = $filtered->where('color_code', $request_color);
+            if ($request_size)
+                $filtered = $filtered->where('size', $request_size);
+            if ($request_warranty)
+                $filtered = $filtered->where('warranty', $request_warranty);
+
+        
+
+            $colors = $filtered->pluck('color_code')->unique()->filter()->values()->toArray();
+            $sizes = $filtered->pluck('size')->unique()->filter()->values()->toArray();
+            $warranties = $filtered->pluck('warranty')->unique()->filter()->values()->toArray();
+
             
             if ($selectedPrice){
                 if (!in_array($selectedPrice, $validatedValues) && !preg_match('/^day_\d+$/', $selectedPrice)) {
@@ -1328,6 +1481,7 @@ class OrderController extends Controller
                     'size' => $request->query('size'),
                     'color' => $request->query('color'),
                     'brand' => $request->query('brand'),
+                    'warranty' => $request->query('warranty'),
                     'count' => $request->query('count'),
                     'colors' => $colors,
                     'brands' => $brands,
@@ -1492,6 +1646,7 @@ class OrderController extends Controller
                 $color = $orderProduct->color;
                 $size = $orderProduct->size;
                 $brand = $orderProduct->brand;
+                $warranty = $orderProduct->warranty;
                 $ratio = $orderProduct->ratio;
                 $quantity = $orderProduct->quantity;
                 
@@ -1510,6 +1665,11 @@ class OrderController extends Controller
                     ->where(function ($query) use ($brand) {
                         if (!is_null($brand)) {
                             $query->where('brand', $brand);
+                        }
+                    })
+                    ->where(function ($query) use ($warranty) {
+                        if (!is_null($warranty)) {
+                            $query->where('warranty', $warranty);
                         }
                     })
                 ->first();
@@ -1691,6 +1851,7 @@ class OrderController extends Controller
             'order_product.size',
             'order_product.color',
             'order_product.brand',
+            'order_product.warranty',
             'order_product.pay_type',
             'order_product.product_price',
             'order_product.price as total_price',
@@ -1705,8 +1866,8 @@ class OrderController extends Controller
 
         
         $address = $user->addresses->where('status', 1)->first() ?? null;
-
-
+        $remaining_credit = Credit::where('user_id', $user->id)->select('remaining_amount')->latest('id')->first();
+        $remaining_credit = $remaining_credit ? number_format($remaining_credit->remaining_amount) : number_format($user->category->max_credit);
         $data = [
             'data' => [
                 'creditCount' => $credit_count,
@@ -1724,7 +1885,7 @@ class OrderController extends Controller
                     'mobile' => $user->phone ?? '',
                     'category' => $user->category->name ?? "1",
                     'address' => $address ? new AddressResource($address) : null,
-                    'remaining_credit' => number_format(2000000),
+                    'remaining_credit' => $remaining_credit,
                 ]
             ],
             'statusCode' => 200,
@@ -1781,6 +1942,7 @@ class OrderController extends Controller
             'order_product.size',
             'order_product.color',
             'order_product.brand',
+            'order_product.warranty',
             'order_product.pay_type',
             'order_product.product_price',
             'order_product.price as total_price',
@@ -1923,6 +2085,7 @@ class OrderController extends Controller
                 'order_product.size',
                 'order_product.color',
                 'order_product.brand',
+                'order_product.warranty',
                 'order_product.pay_type',
                 'order_product.product_price',
                 'order_product.price as total_price',

@@ -31,11 +31,14 @@ class CartController extends Controller
             $color = $product->pivot->color;
             $size = $product->pivot->size;
             $brand = $product->pivot->brand;
+            $id = $product->pivot->id;
+            $warranty = $product->pivot->warranty;
             $sizes = $product->sizes->pluck('size');
             $colors = $product->colors->pluck('color');
             $brands = $product->sizes->pluck('name');
+            $warranties = $product->warranties->pluck('name');
             return [
-                "id" => $product->id,
+                "id" => $id,
                 "faName" => $product->name,
                 "en_name" => $product->en_name,
                 "url" => $product->url,
@@ -47,11 +50,13 @@ class CartController extends Controller
                 "color" => $color ?? null,
                 "size" => $size ?? null,
                 "brand" => $brand ?? null,
+                "warranty" => $warranty ?? null,
                 'selectedPrice' => $product->pivot->pay_type,
                 "discount" => $product->activeOffer()['percent'] ?? 0,
                 "brands"=> $brands,
                 "colors"=> $colors,
                 "sizes"=> $sizes,
+                "warranties"=> $warranties,
             ];
         });
 
@@ -72,8 +77,10 @@ class CartController extends Controller
                 'color' => $i['color'],
                 'size' => $i['size'],
                 'brand' => $i['brand'],
+                'warranty' => $i['warranty'],
                 'sizes' => $i['sizes'],
                 'brands' => $i['brands'],
+                'warranties' => $i['warranties'],
                 'colors' => $i['colors'],
                 'selectedPrice' => $i['selectedPrice'],
                 'discount' => $i['discount'],
@@ -143,6 +150,7 @@ class CartController extends Controller
                 $color = $request['color'] ?? null;
                 $size = $request['size'] ?? null;
                 $brand = $request['brand'] ?? null;
+                $warranty = $request['warranty'] ?? null;
                 $count = $request['count'];
         $product = Product::findOrFail($request['id']);
         $existingProductInCompany = CompanyStock::where('product_id', $product->id)
@@ -152,14 +160,19 @@ class CartController extends Controller
                 }
             })
             ->where(function ($query) use ($size) {
-                if ($size != 'null') {
+                if ($size != 'null' and $size != null) {
 
                     $query->where('size', $size);
                 }
             })
             ->where(function ($query) use ($brand) {
-                if ($brand != 'null') {
+                if ($brand != 'null' and $brand != null) {
                     $query->where('brand', $brand);
+                }
+            })
+            ->where(function ($query) use ($warranty) {
+                if ($warranty != 'null' and $warranty != null) {
+                    $query->where('warranty', $warranty);
                 }
             })
             ->first();
@@ -170,19 +183,24 @@ class CartController extends Controller
         );
         $existingProductInPivot = CartProduct::where('product_id', $product->id)->where('cart_id', $cart->id)
             ->where(function ($query) use ($color) {
-                if ($color != 'null') {
+                if ($color != 'null' and $color != null) {
                     $query->where('color', $color);
                 } 
             })
             ->where(function ($query) use ($size) {
-                if ($size != 'null') {
+                if ($size != 'null' and $size != null) {
 
                     $query->where('size', $size);
                 } 
             })
             ->where(function ($query) use ($brand) {
-                if ($brand != 'null') {
+                if ($brand != 'null' and $brand != null) {
                     $query->where('brand', $brand);
+                } 
+            })
+            ->where(function ($query) use ($warranty) {
+                if ($warranty != 'null' and $warranty != null) {
+                    $query->where('warranty', $warranty);
                 } 
             })
             ->first();
@@ -190,7 +208,7 @@ class CartController extends Controller
             $inventory = true;
             $is_exist = false;
             
-            $calc_price = price_calculate($product, $color, $brand, $size, $request['selectedPrice'], $count);
+            $calc_price = price_calculate($product, $color, $brand, $size, $warranty, $request['selectedPrice'], $count);
       
             if ($existingProductInCompany){
          
@@ -212,6 +230,7 @@ class CartController extends Controller
                         $existingProductInPivot->color = $existingProductInCompany->color_code;
                         $existingProductInPivot->size = $existingProductInCompany->size;
                         $existingProductInPivot->brand = $existingProductInCompany->brand;
+                        $existingProductInPivot->warranty = $existingProductInCompany->warranty;
                         $existingProductInPivot->product_price = $calc_price['number_one_product'];
                         $existingProductInPivot->pay_type = $request['selectedPrice'];
                         $existingProductInPivot->save();
@@ -225,6 +244,7 @@ class CartController extends Controller
                         $new_cart_order_record->color = $existingProductInCompany->color_code;
                         $new_cart_order_record->size = $existingProductInCompany->size;
                         $new_cart_order_record->brand = $existingProductInCompany->brand;
+                        $new_cart_order_record->warranty = $existingProductInCompany->warranty;
                         $new_cart_order_record->product_price = $calc_price['number_one_product'];
                         $new_cart_order_record->pay_type = $request['selectedPrice'];
                         $new_cart_order_record->product_id = $product->id;
@@ -327,8 +347,13 @@ class CartController extends Controller
             ];
         });
          
+        if (isset($new_cart_order_record)){
+            $id = $new_cart_order_record->id;
+        }
+        elseif(isset($existingProductInPivot)){
+                $id = $existingProductInPivot->id;
+        }
        
-        
         // $checksCount = 
         $countCart = DB::table('cart_product')->where('cart_id', $cart->id)->count();
         $cart->count = $countCart;
@@ -343,7 +368,7 @@ class CartController extends Controller
         return  response()->json([
             'data'=>[
                 'existInCart' => $is_exist,
-
+                'id'=> $id,
                 "alertMessage" => $inventory == 0 ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
             ],
             'statusCode' => 200,
@@ -389,6 +414,7 @@ class CartController extends Controller
         $color = $request->color;
         $size = $request->size;
         $brand = $request->brand;
+        $warranty = $request->warranty;
         $existingProductInPivot = CartProduct::where('product_id', $product->id)->where('cart_id', $cart->id)
             ->where(function ($query) use ($color) {
                 if (!is_null($color)) {
@@ -404,6 +430,11 @@ class CartController extends Controller
             ->where(function ($query) use ($brand) {
                 if (!is_null($brand)) {
                     $query->where('brand', $brand);
+                }
+            })
+            ->where(function ($query) use ($warranty) {
+                if (!is_null($warranty)) {
+                    $query->where('warranty', $warranty);
                 }
             })
             ->first();

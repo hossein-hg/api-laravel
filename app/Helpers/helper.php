@@ -164,7 +164,7 @@ use App\Models\Admin\Size;
 
 
 
-function price_calculate($product, $color = null, $brand = null, $size = null, $selectedType = null, $count = null, $user = null)
+function price_calculate($product, $color = null, $brand = null, $size = null, $warranty = null, $selectedType = null, $count = null, $user = null)
 {
 
     $existingProductInCompany = CompanyStock::where('product_id', $product->id)
@@ -182,6 +182,11 @@ function price_calculate($product, $color = null, $brand = null, $size = null, $
         ->where(function ($query) use ($brand) {
             if (!is_null($brand)) {
                 $query->where('brand', $brand);
+            } 
+        })
+        ->where(function ($query) use ($warranty) {
+            if (!is_null($warranty)) {
+                $query->where('warranty', $warranty);
             } 
         })
         ->first();
@@ -283,6 +288,7 @@ function price_calculate($product, $color = null, $brand = null, $size = null, $
 
 
     } else {
+       
         $total_product_price = $prices['cash'] * $count;
         $number_total_product_price = $total_product_price;
        

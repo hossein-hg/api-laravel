@@ -102,9 +102,11 @@ class AuthController extends Controller
                 ], 401);
             }
 
+
+
             $remaining_credit = Credit::where('user_id', $user->id)->select('remaining_amount')->latest('id')->first();
             
-            
+            // dd($remaining_credit);
 
             $category = $user->category ? $user->category->name : null;
             $user->categoryName = $category ?? '1';
@@ -201,12 +203,6 @@ class AuthController extends Controller
 
            
         }
-
-
-
-       
-      
-        
 
        
        $category = $user->category ? $user->category->name : null;

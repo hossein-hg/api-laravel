@@ -47,10 +47,10 @@ class UserController extends Controller
 
             $query->where('company_name', 'LIKE', "%" . $name . "%");
         }
-        if ($request->filled('natinal_code')) {
-            $name = $request->input('natinal_code');
+        if ($request->filled('national_code')) {
+            $name = $request->input('national_code');
 
-            $query->where('natinal_code', 'LIKE', "%" . $name . "%");
+            $query->where('national_code', 'LIKE', "%" . $name . "%");
         }
         if ($request->filled('economic_code')) {
             $name = $request->input('economic_code');
@@ -97,8 +97,8 @@ class UserController extends Controller
                     $query->orderBy('company_name', 'desc'); // قیمت نزولی
                     break;
                 
-                case 'natinal_code':
-                    $query->orderBy('natinal_code', 'desc'); // قیمت نزولی
+                case 'national_code':
+                    $query->orderBy('national_code', 'desc'); // قیمت نزولی
                     break;
                 case 'economic_code':
                     $query->orderBy('economic_code', 'desc'); // قیمت نزولی
@@ -106,9 +106,6 @@ class UserController extends Controller
                 case 'registration_number':
                     $query->orderBy('registration_number', 'desc'); // قیمت نزولی
                     break;
-               
-                
-
                 default:
                     $query->latest(); // پیش‌فرض: جدیدترین
             }
@@ -215,7 +212,7 @@ class UserController extends Controller
     public function destroy(Request $request)
     {
        
-        $user = User::findOrFail(request()->id);
+        $user = User::findOrFail($request->id);
         $user->is_active = $user->is_active == 0 ? 1 : 0;
         $user->save();
         return response()->json([

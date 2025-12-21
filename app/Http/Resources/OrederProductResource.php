@@ -21,6 +21,7 @@ class OrederProductResource extends JsonResource
             'en_name' => trim($this->en_name),
             'count'=>$this->quantity,
             'size'=>$this->size,
+            'warranty'=>$this->warranty,
             'brand'=>$this->brand,
             'pay_type'=>$this->pay_type,
             'color'=>$this->color,
