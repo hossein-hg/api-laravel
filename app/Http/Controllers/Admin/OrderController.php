@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 use App\Http\Resources\AdminHomeResource;
+use App\Http\Resources\WaybillResource;
+use App\Models\Admin\Waybill;
 use DB;
 use App\Models\User;
 use App\Models\Admin\Cart;
@@ -178,6 +180,7 @@ class OrderController extends Controller
 
     }
 
+    
     public function show(Order $order){
         
         $user = auth()->user();
@@ -276,6 +279,7 @@ class OrderController extends Controller
             'order_product.size',
             'order_product.color',
             'order_product.brand',
+            'order_product.warranty',
         ])->paginate(10);
 
         
@@ -357,7 +361,7 @@ class OrderController extends Controller
             'products.cover',
             'groups.name as category_name'
             
-        ])->with('sizes','brands','colors')->paginate(2);
+        ])->with('sizes','brands','colors')->paginate(10);
             
            
         $address = $user->addresses->where('status',1)->first() ?? null;
@@ -433,7 +437,7 @@ class OrderController extends Controller
             'products.cover',
             'groups.name as category_name'
 
-        ])->with('sizes', 'brands', 'colors')->paginate(2);
+        ])->with('sizes', 'brands', 'colors')->paginate(10);
 
 
         $address = $user->addresses->where('status', 1)->first() ?? null;
@@ -509,7 +513,7 @@ class OrderController extends Controller
             'products.cover',
             'groups.name as category_name'
 
-        ])->with('sizes', 'brands', 'colors')->paginate(2);
+        ])->with('sizes', 'brands', 'colors')->paginate(10);
 
 
         $address = $user->addresses->where('status', 1)->first() ?? null;
@@ -1690,6 +1694,7 @@ class OrderController extends Controller
             }
 
             $order->status = $request->status;
+            $order->payment_staus = 1;
             $order->save();
 
             $roleLog = new RoleLog();
@@ -1862,12 +1867,16 @@ class OrderController extends Controller
             'products.cover',
             'groups.name as category_name'
 
-        ])->with('sizes', 'brands', 'colors')->paginate(2);
+        ])->with('sizes', 'brands', 'colors')->paginate(10);
 
         
         $address = $user->addresses->where('status', 1)->first() ?? null;
-        $remaining_credit = Credit::where('user_id', $user->id)->select('remaining_amount')->latest('id')->first();
-        $remaining_credit = $remaining_credit ? number_format($remaining_credit->remaining_amount) : number_format($user->category->max_credit);
+        $credit = Credit::where('user_id', $user->id)->latest('id')->first();
+        $remaining_credit = $credit->remaining_amount;
+        $amount_spent = $credit->amount_spent;
+      
+        $remaining_credit = $remaining_credit ? number_format($remaining_credit) : number_format($user->category->max_credit);
+        $amount_spent = $amount_spent ? number_format($amount_spent) : 0;
         $data = [
             'data' => [
                 'creditCount' => $credit_count,
@@ -1886,6 +1895,7 @@ class OrderController extends Controller
                     'category' => $user->category->name ?? "1",
                     'address' => $address ? new AddressResource($address) : null,
                     'remaining_credit' => $remaining_credit,
+                    'amount_spent' => $amount_spent,
                 ]
             ],
             'statusCode' => 200,
@@ -1953,11 +1963,15 @@ class OrderController extends Controller
             'products.cover',
             'groups.name as category_name'
 
-        ])->with('sizes', 'brands', 'colors')->paginate(2);
+        ])->with('sizes', 'brands', 'colors')->paginate(10);
 
 
         $address = $user->addresses->where('status', 1)->first() ?? null;
-
+        $credit = Credit::where('user_id', $user->id)->latest('id')->first();
+        $remaining_credit = $credit->remaining_amount;
+        $remaining_credit = $remaining_credit ? number_format($remaining_credit) : number_format($user->category->max_credit);
+        $amount_spent = $credit->amount_spent;
+        $amount_spent = $amount_spent ? number_format($amount_spent) : 0;
         $data = [
             'data' => [
                 'creditCount' => $credit_count,
@@ -1974,7 +1988,8 @@ class OrderController extends Controller
                     'name' => $user->name ?? '',
                     'mobile' => $user->phone ?? '',
                     'category'=> $user->category->name ?? "1",
-                    'remaining_credit'=> number_format(2000000),
+                    'remaining_credit' => $remaining_credit,
+                    'amount_spent' => $amount_spent,
                     'address' => $address ? new AddressResource($address) : null,
                 ]
             ],
@@ -2098,7 +2113,7 @@ class OrderController extends Controller
                 'products.type',
             ])
             ->with('sizes', 'brands', 'colors')
-            ->paginate(2);
+            ->paginate(10);
 
         // dd($products);
 
@@ -2112,7 +2127,10 @@ class OrderController extends Controller
         });      
         
         $comments = $order->comments;
-          
+        $waybills =   Waybill::where('order_id', $order->id)->get();
+        $credit = Credit::where('user_id', $user->id)->latest('id')->first();
+        $remaining_credit = $credit->remaining_amount;
+        $remaining_credit = $remaining_credit ? number_format($remaining_credit) : number_format($user->category->max_credit);
         $data = [
             'data' => [
                 'creditCount' => $credit_count,
@@ -2137,7 +2155,7 @@ class OrderController extends Controller
                     'name' => $user->name ?? '',
                     'mobile' => $user->phone ?? '',
                     'category' => $user->category->name ?? "1",
-                    'remaining_credit' => number_format(2000000),
+                    'remaining_credit' => $remaining_credit,
                     "phone" => $user->phone,
                     "telephone" => $user->telephone,
                     "gender" => $user->gender,
@@ -2152,6 +2170,7 @@ class OrderController extends Controller
                     'address' => $address ? new AddressResource($address) : null,
                 ],
                 'logs'=> $logs,
+                'waybills'=> WaybillResource::collection($waybills),
                 'comments'=> OrderCommentResource::collection($comments),
             ],
             'statusCode' => 200,

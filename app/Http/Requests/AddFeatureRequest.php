@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Admin\CompanyStock;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Http\Exceptions\HttpResponseException;
+
 class AddFeatureRequest extends FormRequest
 {
     /**
@@ -22,6 +24,7 @@ class AddFeatureRequest extends FormRequest
      */
     public function rules(): array
     {
+        
         return [
             'id' => ['required', 'exists:products,id'],
 
@@ -38,7 +41,7 @@ class AddFeatureRequest extends FormRequest
             'rows.*.warranty' => ['nullable', 'string', 'max:20'],
             'rows.*.price' => ['required', 'string', 'max:20'],
             'rows.*.count' => ['required', 'integer', 'min:0'],
-            'rows.*.accCode' => ['required', 'integer','unique:product_company_stocks,accCode'],
+            'rows.*.accCode' => ['required', 'integer'],
         ];
     }
 

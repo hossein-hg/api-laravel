@@ -45,7 +45,7 @@ class ProductRequest extends FormRequest
                 'discount_end_time'=> ['required_with:discount'],
                 'discount_start_time'=> ['required_with:discount'],
                 'max_sell' => ['required', 'integer'],
-                'accCode'=> ['required','unique:products,accCode']
+                'accCode'=> ['required_if:type,false','unique:products,accCode']
             ];
         }
         else{
@@ -70,7 +70,7 @@ class ProductRequest extends FormRequest
                 'discount_end_time' => ['required_with:discount'],
                 'discount_start_time' => ['required_with:discount'],
                 'max_sell'=> ['required','integer'],
-                'accCode'=> ['required','unique:products,accCode']
+                // 'accCode'=> ['required_if:type,false', Rule::unique('products', 'accCode')->ignore($this->id, 'id')->whereNull('deleted_at')]
 
             ];
         }
@@ -142,6 +142,8 @@ class ProductRequest extends FormRequest
 
             "id.required"=> 'آیدی محصول الزامی است',
             "id.exists"=> ' محصول  یافت نشد',
+
+            "accCode.required_if" => ' کد حسابداری الزامی است',
 
 
         ];

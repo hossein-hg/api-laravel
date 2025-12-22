@@ -18,7 +18,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 class GroupController extends Controller
 {
    public function index(){
-       $groups = Group::whereNull('parent_id')->with('children','brands')->paginate(2);
+       $groups = Group::with('children','brands','parent')->paginate(10);
     
         return new GroupCollection($groups);
    }

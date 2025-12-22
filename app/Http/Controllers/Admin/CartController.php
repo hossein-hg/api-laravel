@@ -38,7 +38,8 @@ class CartController extends Controller
             $brands = $product->sizes->pluck('name');
             $warranties = $product->warranties->pluck('name');
             return [
-                "id" => $id,
+                "id" => $product->id,
+                "itemId"=> $id,
                 "faName" => $product->name,
                 "en_name" => $product->en_name,
                 "url" => $product->url,
@@ -66,6 +67,7 @@ class CartController extends Controller
         $itemsForOutput = $items->map(function ($i) {
             return [
                 'id' => $i['id'],
+                'itemId' => $i['itemId'],
                 'faName' => $i['faName'],
                 'en_name' => $i['en_name'],
                 'url' => $i['url'],
@@ -147,11 +149,14 @@ class CartController extends Controller
                     'errors' => null
                 ]); 
             }
-                $color = $request['color'] ?? null;
-                $size = $request['size'] ?? null;
-                $brand = $request['brand'] ?? null;
-                $warranty = $request['warranty'] ?? null;
-                $count = $request['count'];
+
+       
+        $color = $request['color'] ?? null;
+        $size = $request['size'] ?? null;
+        $brand = $request['brand'] ?? null;
+        $warranty = $request['warranty'] ?? null;
+        $count = $request['count'];    
+              
         $product = Product::findOrFail($request['id']);
         $existingProductInCompany = CompanyStock::where('product_id', $product->id)
             ->where(function ($query) use ($color) {
@@ -176,6 +181,9 @@ class CartController extends Controller
                 }
             })
             ->first();
+
+       
+      
         $user_id = auth()->user()->id;
         $cart = Cart::firstOrCreate(
             ['user_id' => $user_id],
@@ -346,7 +354,7 @@ class CartController extends Controller
                 'total_price' => number_format($item->total_price)
             ];
         });
-         
+        $id = 0; 
         if (isset($new_cart_order_record)){
             $id = $new_cart_order_record->id;
         }
@@ -368,7 +376,7 @@ class CartController extends Controller
         return  response()->json([
             'data'=>[
                 'existInCart' => $is_exist,
-                'id'=> $id,
+                'itemId'=> $id,
                 "alertMessage" => $inventory == 0 ? 'تعداد انتخابی بیشتر از تعداد موجود است' : '',
             ],
             'statusCode' => 200,

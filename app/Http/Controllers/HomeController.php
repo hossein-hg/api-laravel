@@ -93,7 +93,8 @@ class HomeController extends Controller
                 'testimonials' => [
                         "title"=>"دیدگاه خریداران",
                         "subTitle"=>"این المان برای نمایش دیدگاه خریداران یا کاربران معمولی سایت است و شما میتوانید هرچیزی درون ان بنویسید و استفاده کنید . این المان اختصاصی قالب فروشگاهی مهرنوش است و به هیچ درون ان بنویسید و استفاده کنید . این المان اختصاصی قالب فروشگاهی مهرنوش است و به هیچ",
-                        'comments' => CommentResource::collection($comments),
+                        // 'comments' => CommentResource::collection($comments),
+                        'comments' => [],
 
                 ],
                 'productList' => [

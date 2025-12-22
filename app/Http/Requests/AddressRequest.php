@@ -31,7 +31,7 @@ class AddressRequest extends FormRequest
             'mobile'=> ['required', 'string','regex:/^09[0-9]{9}$/'],
             'phone'=> ['required', 'string', 'regex:/^0\d{2}\d{8}$/'],
             'postalCode'=> ['required', 'string','regex:/^[0-9]{10}$/'],
-            'email'=> ['required', 'email'],
+            'email'=> ['nullable', 'email'],
             'description'=> ['nullable', 'string','min:5','max:100'],
         ];
     }

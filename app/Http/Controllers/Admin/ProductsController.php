@@ -104,7 +104,7 @@ class ProductsController extends Controller
         //         dump('- ' . $b->name . "\n");
         //     }
         // }
-       
+            
 
         if ($request->filled('filterBrand')) {
             $brands = explode(',', $request->filterBrand);
@@ -139,7 +139,7 @@ class ProductsController extends Controller
         }
 
         // pagination
-        $products = $query->paginate(perPage: 2);
+        $products = $query->paginate(perPage: 30);
 
         return new ProductCollection($products);
 
@@ -183,6 +183,7 @@ class ProductsController extends Controller
         $product->additionalInformation = e($request->additionalInformation);
         $product->max_sell = $request->max_sell;
         $product->stars = 5;
+        $product->accCode = $request->accCode;
         $product->save();
         if ($request->filled('images')) {
             foreach ($request->images as $imageRequest) {
@@ -240,7 +241,11 @@ class ProductsController extends Controller
         $product->shortDescription = e($request->shortDescription);
         $product->additionalInformation = e($request->additionalInformation);
         $product->max_sell = $request->max_sell;
+        $product->accCode = $request->accCode;
         $product->save();
+        if ($product->type == '0') {
+            CompanyStock::where('product_id',$product->id)->delete();
+        }
         if ($request->filled('images')) {
             //    dd(count($request->images));
             foreach ($request->images as $imageRequest) {
@@ -330,7 +335,18 @@ class ProductsController extends Controller
     {
         Product::findOrFail($request->id);
         $company = CompanyStock::where('product_id', $request->id)->delete();
+        
         foreach ($request->rows as $row) {
+            $companyRow = CompanyStock::where('accCode', $row['accCode'])->first();
+            if ($companyRow){
+                return response()->json([
+                    'success' => false,
+                    'message' => ' خطا اعتبارسنجی!',
+                    'statusCode' => 422,
+                    'errors' => ['این کد حسابداری از قبل وجود دارد'],
+                    'data' => null
+                ]);
+            }
             $company = new CompanyStock();
             $company->product_id = $request->id;
             if ($row['color']) {
@@ -347,6 +363,7 @@ class ProductsController extends Controller
             $company->accCode = $row['accCode'];
             $company->price = $row['price'];
             $company->save();
+
         }
 
         return response()->json([
@@ -363,11 +380,16 @@ class ProductsController extends Controller
         
         $product = Product::findOrFail($id);
         $group = $product->group;
+        $companies = collect();
+        if($group){
+            $brands = $group->brands ? $group->brands->pluck('id') : null;
+            $companies = CompanyStock::where('product_id', $product->id)->whereIn('brand_id', $brands)->get();
+        }
+      
         
-        $brands = $group->brands->pluck('id');
-
         // dd($group);
-        $companies = CompanyStock::where('product_id', $product->id)->whereIn('brand_id',$brands)->get();
+        
+      
         return response()->json([
             'data' => [
                 'id' => $product->id,

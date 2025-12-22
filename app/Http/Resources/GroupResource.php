@@ -28,6 +28,7 @@ class GroupResource extends JsonResource
                 "name"=>  $this->name,
                 "level"=>  $this->level,
                 "parent_id"=>  $this->parent_id,
+                "parent_name"=>  $this->parent ? $this->parent->name : null,
                 "status"=>  $this->status,
                 "url"=>  $this->url,
                 "image"=>  $this->image,

@@ -8,7 +8,7 @@ class OrderService{
       
         if ($method == 'index'){
             $query = Order::with('products', 'user')->where('user_id', auth()->user()->id);
-            $orders = $query->orderBy('id', 'desc')->paginate(2);
+            $orders = $query->orderBy('id', 'desc')->paginate(10);
            
             return $orders;
         }

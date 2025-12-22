@@ -473,7 +473,7 @@ Route::get('get-header', function(){
                 // ],
             ],
             "siteData" => [
-                "logo" => "https://webeto.co/uploads/Global/Webeto317.png",  // placeholder – مسیر لوگو، مثل '/images/logo.png'
+                "logo" => "https://files.epyc.ir/images/Webeto317.png",  // placeholder – مسیر لوگو، مثل '/images/logo.png'
                 "faName" => "وبتو",
                 "enName" => "WEBETO",
                 "url" => "https://webeto.com"  // placeholder – URL سایت، مثل 'https://webeto.com'
